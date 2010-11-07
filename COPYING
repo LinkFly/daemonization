@@ -1,6 +1,7 @@
-DYNSERV - Common Lisp utilities kit for working with application server RESTAS
+DAEMONIZATION - Common Lisp system for transform into system service 
+ lisp processes.
 
-Copyright (c) 2009-2010 Katrevich Sergey
+Copyright (c) 2009-2020 Katrevich Sergey
 
 Preamble to the Gnu Lesser General Public License
 

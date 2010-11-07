@@ -1,21 +1,69 @@
 (defpackage :daemonization 
-  (:use :cl :daemon-utils-port)
+  (:use :cl :daemon-core-port)
   (:export 
    ))
 
 (in-package :daemonization)
-
+;;;;  Установка глобальных переменных. ;;;;;;;
 #|
 1. Получение аргументов.
-2. Установка глобальных переменных.
+|#
+
+;(defparameter *daemon-command* 
+;  (check-daemon-command (get-daemon-command))) 
+#|
+
+|#
+;(defparameter *as-daemon* (not (string= *daemon-command* "nodaemon")))
+
+#|
 -. Действия необходимые для отсоединения от терминала
      - определение константы sb-unix:tiocnotty
 - Действия необходимые чтобы открыть зарезервированный порт (< 1024)
      - определение константы +PR_SET_KEEPCAPS+
+;;;;;;;;;;;
 3. Получение конфигурационных параметров.
 4. Проверка на корректность комманды.
+;;;;;;;;;;;;;
 5. Обработка комманд.
     - zap - удалить pidfile и выйти.
+|#
+
+#|(defstruct daemon-parameters 
+  name
+  user
+  group  
+  pidfile)|#
+(defconstant *all-daemon-commands* '("start" "stop" "zap" "kill" "restart" "nodaemon")) 
+
+(defun check-daemon-command (cmd)
+  (unless (find cmd *all-daemon-commands* :test #'string-equal)
+    (error "Bad command-line options"))
+  cmd)
+
+(defmacro case-command (cmd &rest cases-bodies)
+  `(cond 
+     ,@(loop for clause in cases-bodies
+	  collect `((string-equal ,cmd ,(first clause))
+		    ,@(rest clause)))))
+
+(defun daemonized (daemon-command 
+		   &key main-function name user group pid-file)
+					;		   &aux as-daemon-p)
+					;  (setq as-daemon-p (not (string= *daemon-command* "nodaemon")))
+  (check-daemon-command daemon-command)
+  (let ((clean-params (list :pid-file pid-file))
+	(start-params (list :name name :user user :group group :main-function main-function)))
+    (case-command daemon-command
+		  ("zap" (zap-service clean-params))
+		  ("stop" (stop-service clean-params))
+		  ("kill" (kill-service clean-params))
+		  ("restart" (stop-service clean-params)
+			     (start-service start-params))
+		  ("start" (start-service start-params))		   
+		  ("nodaemon" (simple-start start-params)))))
+
+#|
     - stop - остановить демон и выйти
        Остановить демон:
        - прочитать pid 
@@ -86,4 +134,26 @@
 - Установка нового обработчика sigusr1 для остановки демона в дальнейшем
 4. Сигнал sigusr1 родителя об успешном старте.
 |#
+
+;;;;;;; Кроме fork ;;;;;;;
+#|
+;;Before fork
+(prepare-before-grant)
+(change-user ...) 
+(set-grant)
+... fork ...
+set *debugger-hook*
+change current dir
+set umask
+detach-from-tty
+switch to pseudo terminal
+setsid
+enable-interrupt for sigusr1:
+ - log-info
+ - error -> log-err
+ - quit
+write pid file
+clean *debugger-hook*
+
+
 
