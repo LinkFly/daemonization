@@ -51,7 +51,7 @@
 	  (setf (symbol-function (read-from-string ,fn-str-name))
 		(symbol-function 
 		 (find-symbol ,fn-str-name :sb-posix)))))
-			      
+
 ;; Define initgroups
 #+daemon.change-user
 (progn 

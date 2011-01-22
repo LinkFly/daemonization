@@ -1,39 +1,10 @@
 (defpackage :daemonization 
   (:use :cl :daemon-core-port)
-  (:export 
-   ))
+  (:export #:daemonized))
+
 
 (in-package :daemonization)
-;;;;  Установка глобальных переменных. ;;;;;;;
-#|
-1. Получение аргументов.
-|#
 
-;(defparameter *daemon-command* 
-;  (check-daemon-command (get-daemon-command))) 
-#|
-
-|#
-;(defparameter *as-daemon* (not (string= *daemon-command* "nodaemon")))
-
-#|
--. Действия необходимые для отсоединения от терминала
-     - определение константы sb-unix:tiocnotty
-- Действия необходимые чтобы открыть зарезервированный порт (< 1024)
-     - определение константы +PR_SET_KEEPCAPS+
-;;;;;;;;;;;
-3. Получение конфигурационных параметров.
-4. Проверка на корректность комманды.
-;;;;;;;;;;;;;
-5. Обработка комманд.
-    - zap - удалить pidfile и выйти.
-|#
-
-#|(defstruct daemon-parameters 
-  name
-  user
-  group  
-  pidfile)|#
 (defconstant *all-daemon-commands* '("start" "stop" "zap" "kill" "restart" "nodaemon")) 
 
 (defun check-daemon-command (cmd)
@@ -63,7 +34,20 @@
 		  ("start" (start-service start-params))		   
 		  ("nodaemon" (simple-start start-params)))))
 
+
 #|
+- Действия необходимые для отсоединения от терминала
+     - определение константы sb-unix:tiocnotty
+     ...
+- Действия необходимые чтобы открыть зарезервированный порт (< 1024)
+     - определение константы +PR_SET_KEEPCAPS+
+     ...
+;;;;;;;;;;;
+3. Получение конфигурационных параметров.
+4. Проверка на корректность комманды.
+;;;;;;;;;;;;;
+5. Обработка комманд.
+    - zap - удалить pidfile и выйти.
     - stop - остановить демон и выйти
        Остановить демон:
        - прочитать pid 
@@ -97,13 +81,16 @@
           - переключаемся к псевдотерминалу
           - создание нового сенса (setsid)
 
-Далее, пользовательские процедуры.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Следующее не имеет отношение к настоящей системе, но понадобиться при создании системы restas-daemon-ext базирующейся
+на этой системе:
  - настройка ASDF
  - настройка SWANK
  - загрузка restas
  - настройка restas
  - загрузка дополнительных ASDF-систем
  - запуск сайтов
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
           - опять поменять обработчик сигнала sigusr1
              - реакция на остановку демона - логгирование и обработка возможной ошибки.
@@ -112,7 +99,6 @@
           - послать родителю сигнал sigusr1
           - установить *debugger-hook к nil
           - логирование о успешном запуске
-
 
 Что делает no-daemon?
 1. Получает аргументы
@@ -141,6 +127,7 @@
 (prepare-before-grant)
 (change-user ...) 
 (set-grant)
+
 ... fork ...
 set *debugger-hook*
 change current dir
@@ -154,6 +141,7 @@ enable-interrupt for sigusr1:
  - quit
 write pid file
 clean *debugger-hook*
+|#
 
 
 
