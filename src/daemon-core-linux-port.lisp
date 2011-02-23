@@ -1,6 +1,6 @@
 (defpackage :daemon-core-linux-port
   (:use :cl :daemon-features :daemon-sys-linux-port :daemon-utils-linux-port)
-  (:shadowing-import-from :daemon-sys-linux-port #:open)
+  (:shadowing-import-from :daemon-sys-linux-port #:open #:close)
   (:export #:get-daemon-command
 	   #:check-daemon-command
 	   #:zap-daemon
@@ -64,7 +64,7 @@
     (delete-file pid-file)
     (exit ex-ok))
 
-  (defun start-daemon (name &key configure-rights-fn preparation-fn main-fn)
+  (defun start-daemon (name pid-file &key configure-rights-fn preparation-fn main-fn)
     (fork-this-process 
      :parent-form-before-fork (when configure-rights-fn (funcall configure-rights-fn))
      :child-form-after-fork (set-global-error-handler)

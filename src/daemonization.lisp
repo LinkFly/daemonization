@@ -1,14 +1,18 @@
 (defpackage :daemonization 
   (:use :cl :daemon-core-port)
   (:export #:daemonized))
-
+ 
 
 (in-package :daemonization)
 
-(defconstant *all-daemon-commands* '("start" "stop" "zap" "kill" "restart" "nodaemon")) 
+(defmacro define-constant (name value &optional doc)
+       `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
+                           ,@(when doc (list doc))))
+
+(define-constant +all-daemon-commands+ '("start" "stop" "zap" "kill" "restart" "nodaemon")) 
 
 (defun check-daemon-command (cmd)
-  (unless (find cmd *all-daemon-commands* :test #'string-equal)
+  (unless (find cmd +all-daemon-commands+ :test #'string-equal)
     (error "Bad command-line options"))
   cmd)
 

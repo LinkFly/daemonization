@@ -1,5 +1,5 @@
 (defpackage :daemon-sys-linux-port
-  (:use :cl 
+  (:use :cl 	
 	:daemon-features
 	#+sbcl :sb-alien
         #+sbcl :sb-unix)
@@ -28,29 +28,39 @@
 	   #:O-TRUNC #:S-IREAD #:S-IWRITE #:S-IROTH
 	   #:getpid #:getppid #:ex-ok #:ex-software 
 	   #:chdir #:umask #:setsid #:ioctl #:close
-	   #:dup #:dup2))
+	   #:dup #:dup2
+	   #:tiocnotty #:log-info #:log-err))
 
 (in-package :daemon-sys-linux-port)
 
+;;;;;;;;;;;;;;;;;; Compilation stage ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; For definition cap-from-text, cap-set-proc and cap-free
+#+(and sbcl daemon.listen-privileged-ports)
+(eval-when (:compile-toplevel)
+  (defparameter *libcap-probable-files* '("/lib/libcap.so.2" "/lib/libcap.so"))
+  (load-shared-object (find-if #'probe-file *libcap-probable-files*)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defconstant ex-ok 0)
 (defconstant ex-software 70)
-#+(and sbcl daemon.listen-privileged-ports)
-(defparameter *libcap-probable-files* '("/lib/libcap.so.2" "/lib/libcap.so"))
 
 (defun exit (&optional (status ex-ok))
   #-sbcl (error "Not implemented on not sbcl lisps")
-  #+sbcl (quit status))
+  #+sbcl (quit :unix-status status))
 
 #-sbcl (error "DEF-ALIEN-CALL not implemented for not SBCL lisps")
 #+sbcl
 (defmacro def-alien-call (name &rest args &aux fn-str-name)
-
   (setq fn-str-name (string-upcase 
 		     (substitute #\- #\_ name)))
-  `(progn (sb-posix::define-call ,name ,@args)
-	  (setf (symbol-function (read-from-string ,fn-str-name))
-		(symbol-function 
-		 (find-symbol ,fn-str-name :sb-posix)))))
+  `(progn 
+     (sb-posix::define-call ,name ,@args)
+     (let ((fn-sym (find-symbol (string-upcase ,fn-str-name) :sb-posix))
+	   (fn-using-sym (read-from-string ,fn-str-name)))
+       (format t "~&DAEMONIZATION: INFO: SYS-LINUX-LAYER: try defining ~S ..." ,name)
+       (setf (symbol-function fn-using-sym) (symbol-function fn-sym))
+       (format t "OK. (symbol-function ~S) => ~S ~%"
+	       fn-using-sym (symbol-function fn-using-sym)))))
 
 ;; Define initgroups
 #+daemon.change-user
@@ -58,7 +68,7 @@
   #-sbcl (error "Not implemented for not SBCL lisps")
   #+sbcl (def-alien-call "initgroups" int minusp (user c-string) (group sb-posix::gid-t))
 ) ;progn for :daemon.listen-privileged-ports feature
-    
+     
 ;; Define constant +PR_SET_KEEPCAPS+, functions prctl, load library "libcap", and
 ;;  functions for grant capabilities: cap-from-text, cap-set-proc, cap-free
 #+daemon.listen-privileged-ports 
@@ -69,8 +79,9 @@
   #-sbcl
   (error "Not implemented load libcap library (with cap_xx functions) for not sbcl lisps")
   #+sbcl 
-  (progn 
-    (load-shared-object (find-if #'probe-file *libcap-probable-files*))
+  (progn     
+    ;; For compilation following functions, "libcap.so" library must be loaded into 
+    ;; compiling system (look at the begining)
     (def-alien-call "cap_from_text" (* char) null-alien (text c-string))
     (def-alien-call "cap_set_proc" int minusp (cap_p (* char)))
     (def-alien-call "cap_free" int minusp (cap_p (* char))))

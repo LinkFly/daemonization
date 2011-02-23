@@ -1,6 +1,6 @@
 (defpackage :daemon-utils-linux-port
   (:use :cl :daemon-features :daemon-sys-linux-port)
-  (:shadowing-import-from :daemon-sys-linux-port #:open)
+  (:shadowing-import-from :daemon-sys-linux-port #:open #:close)
   (:export #:set-current-dir #:set-umask
 	   #:detach-from-tty #:switch-to-slave-pseudo-terminal #:start-new-session
 	   #:preparation-before-grant-listen-privileged-ports	   
@@ -62,15 +62,16 @@
       (write (getpid) :stream out)))
   ) ;feature :daemon.as-daemon
 
-(defmacro linux-change-user (name &optional group)
-  `(let* ((passwd (getpwnam ,name))
-	  (gid (if ,group
-		   (group-gid (getgrnam ,group))
-		   (passwd-gid passwd)))
-	  (uid (passwd-uid passwd)))
+#+daemon.change-user
+(defun linux-change-user (name &optional group)
+  (let* ((passwd (getpwnam name))
+	 (gid (if group
+		  (group-gid (getgrnam group))
+		  (passwd-gid passwd)))
+	 (uid (passwd-uid passwd)))
     (setresgid gid gid gid)
     (initgroups name gid)
-    (setresuid uid uid uid))) ;feature :daemon.change-user
+    (setresuid uid uid uid)))		;feature :daemon.change-user
 ;;;;;;;;
 
 #+daemon.listen-privileged-ports
