@@ -1,32 +1,34 @@
 (defpackage :daemon-utils-port
   (:use :cl 
-	:daemon-features
+	:daemon-logging
+	:daemon-features	
 	#-linux (error "Package DAEMON-UTILS-PORT not implemented on not Linux")
 	#+linux
 	:daemon-utils-linux-port)
   (:export #:restrict-rights
 	   #:isolate-process
-	   ))
+	   #:*fn-log-info*
+	   #:*fn-log-err*))
 
 (in-package :daemon-utils-port)
 
-(defun change-user (name &optional group)
+(defun-ext change-user (name &optional group)
   #-linux (error "CHANGE-USER not implemented on not Linux")
   #+linux (linux-change-user name group))
 
-(defun preparation-before-grant ()
+(defun-ext preparation-before-grant ()
   #+linux 
   (progn 
     #+daemon.listen-privileged-ports
     (preparation-before-grant-listen-privileged-ports)))
 
-(defun set-grant ()
+(defun-ext set-grant ()
   #+linux 
   (progn 
     #+daemon.listen-privileged-ports
     (set-grant-listen-privileged-ports)))
 
-(defun restrict-rights (&key new-user new-group)  
+(defun-ext restrict-rights (&key new-user new-group)  
   (preparation-before-grant)
   #+daemon.change-user
   (when new-user
@@ -35,7 +37,7 @@
 
 
 #+daemon.as-daemon
-(defun isolate-process ()
+(defun-ext isolate-process ()
     #-linux (error "ISOLATE-PROCESS not implemented on not Linux")
     #+linux
     (progn 

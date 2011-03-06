@@ -1,13 +1,13 @@
 (defpackage :daemon-sys-linux-port
   (:use :cl 	
-	:daemon-features
+	:daemon-logging
 	#+sbcl :sb-alien
         #+sbcl :sb-unix)
   #+sbcl
   (:import-from :sb-posix
 		#:getpwnam #:getgrnam #:group-gid #:passwd-gid #:passwd-uid
 		#:setresgid #:setresuid #:fork #:kill #:getpid #:getppid
-		#:chdir #:umask #:setsid #:dup #:dup2)
+		#:chdir #:getcwd #:umask #:setsid #:dup #:dup2)
   #+sbcl
   (:shadowing-import-from :sb-posix
 			  #:sigusr1 #:sigchld #:sigkill #:open 
@@ -27,16 +27,34 @@
 	   #:O-RDWR #:O-RDONLY #:O-WRONLY #:O-CREAT
 	   #:O-TRUNC #:S-IREAD #:S-IWRITE #:S-IROTH
 	   #:getpid #:getppid #:ex-ok #:ex-software 
-	   #:chdir #:umask #:setsid #:ioctl #:close
+	   #:chdir #:getcwd #:umask #:setsid #:ioctl #:close
 	   #:dup #:dup2
-	   #:tiocnotty #:log-info #:log-err))
+	   #:tiocnotty #:syslog
+	   #:*fn-log-info* #:*fn-log-err*))
 
 (in-package :daemon-sys-linux-port)
+;;; Correct log-info and log-err (function from :daemon-logging)
+(setf (symbol-function 'log-info) (symbol-function 'daemon-logging:log-info))
+(setf (symbol-function 'log-err) (symbol-function 'daemon-logging:log-err))
+
+;;; Logging
+;(defconstant +log-layer+ :sys-linux-layer)
+(defparameter *fn-log-info* #'(lambda (fmt-str &rest args)
+				(syslog log-info (princ (apply #'format nil fmt-str args)))))
+(defparameter *fn-log-err* #'(lambda (fmt-str &rest args)
+				(syslog log-err (princ (concatenate 'string "ERR: " (apply #'format nil fmt-str args))))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Logging checking
+;(log-info "test")
+;(defun-ext f (x y) (log-info "this f") (+ x (g y)))
+;(defun-ext g (x) (log-info "this g") (* x x))
+;(f 3 4)
+;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;; Compilation stage ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; For definition cap-from-text, cap-set-proc and cap-free
 #+(and sbcl daemon.listen-privileged-ports)
-(eval-when (:compile-toplevel)
+(eval-when (:compile-toplevel :load-toplevel)
   (defparameter *libcap-probable-files* '("/lib/libcap.so.2" "/lib/libcap.so"))
   (load-shared-object (find-if #'probe-file *libcap-probable-files*)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -57,9 +75,9 @@
      (sb-posix::define-call ,name ,@args)
      (let ((fn-sym (find-symbol (string-upcase ,fn-str-name) :sb-posix))
 	   (fn-using-sym (read-from-string ,fn-str-name)))
-       (format t "~&DAEMONIZATION: INFO: SYS-LINUX-LAYER: try defining ~S ..." ,name)
+       (log-info "try defining ~S ..." ,name)
        (setf (symbol-function fn-using-sym) (symbol-function fn-sym))
-       (format t "OK. (symbol-function ~S) => ~S ~%"
+       (log-info " ... OK. (symbol-function ~S) => ~S"
 	       fn-using-sym (symbol-function fn-using-sym)))))
 
 ;; Define initgroups
@@ -98,8 +116,16 @@
     (def-alien-call "unlockpt" int minusp (fd sb-posix::file-descriptor))
     (def-alien-call "ptsname" c-string null (fd sb-posix::file-descriptor)))
     
-  (unless (boundp 'tiocnotty)
-    (defconstant tiocnotty 21538))
+  (let* ((pkg 
+	  #+sbcl :sb-unix 
+	  #-sbcl (error "Not implemented search TIOCNOTTY constant for not SBCL lisps")
+	  )
+	 (sym (find-symbol "TIOCNOTTY" pkg)))
+    (defconstant tiocnotty
+      (if (and sym (boundp sym))
+	  (symbol-value sym)
+	  21538)))
+    
   ) ;progn for :daemon.as-daemon feature
 
 

@@ -1,5 +1,6 @@
 (defpackage :daemon-core-port   
   (:use :cl 
+	:daemon-logging
 	:daemon-features
 	:daemon-utils-port
 	#-linux (error "Package DAEMON-CORE-PORT not implemented on not Linux")
@@ -9,7 +10,9 @@
 	   #:zap-service
 	   #:kill-service
 	   #:start-service
-	   #:simple-start))
+	   #:simple-start
+	   #:*fn-log-info* 
+	   #:*fn-log-err*))
 
 (in-package :daemon-core-port)
 
@@ -19,22 +22,22 @@
 
 #+daemon.as-daemon
 (progn 
-  (defun stop-service (params)
+  (defun-ext stop-service (params)
     #-linux (error "STOP-SERVICE not implemented on not Linux")
     #+linux
     (stop-daemon (getf params :pid-file)))
   
-  (defun zap-service (params)
+  (defun-ext zap-service (params)
     #-linux (error "ZAP-SERVICE not implemented on not Linux")
     #+linux
     (zap-daemon (getf params :pid-file)))
 
-  (defun kill-service (params)
+  (defun-ext kill-service (params)
     #-linux (error "KILL-SERVICE not implemented on not Linux")
     #+linux
     (kill-daemon (getf params :pid-file)))
 
-  (defun start-service (params)
+  (defun-ext start-service (params)
     #-linux (error "START-SERVICE not implemented on not Linux")
     #+linux
     (start-daemon
@@ -49,7 +52,7 @@
 
   ) ;feature :as-daemon					
 
-(defun simple-start (params)
+(defun-ext simple-start (params)
   (restrict-rights :new-user (getf params :user) 
 		   :new-group (getf params :group))
   (start-as-no-daemon (getf params :main-function)))

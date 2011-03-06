@@ -1,5 +1,5 @@
 (defpackage :daemonization 
-  (:use :cl :daemon-core-port)
+  (:use :cl :daemon-logging :daemon-core-port)
   (:export #:daemonized))
  
 
@@ -11,7 +11,7 @@
 
 (define-constant +all-daemon-commands+ '("start" "stop" "zap" "kill" "restart" "nodaemon")) 
 
-(defun check-daemon-command (cmd)
+(defun-ext check-daemon-command (cmd)
   (unless (find cmd +all-daemon-commands+ :test #'string-equal)
     (error "Bad command-line options"))
   cmd)
@@ -22,7 +22,7 @@
 	  collect `((string-equal ,cmd ,(first clause))
 		    ,@(rest clause)))))
 
-(defun daemonized (daemon-command 
+(defun-ext daemonized (daemon-command 
 		   &key main-function name user group pid-file)
 					;		   &aux as-daemon-p)
 					;  (setq as-daemon-p (not (string= *daemon-command* "nodaemon")))

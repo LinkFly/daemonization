@@ -10,24 +10,28 @@
   :version "0.0.1"
   :depends-on ()
   :components ((:module "src"
-			:components ((:file "daemon-features")
+			:components ((:file "daemon-logging")
+				     (:file "daemon-features")
 				     #+linux 
-				     (:file "daemon-sys-linux-port" :depends-on ("daemon-features"))
+				     (:file "daemon-sys-linux-port" :depends-on ("daemon-logging" "daemon-features"))
 				     #+linux 
-				     (:file "daemon-utils-linux-port" :depends-on ("daemon-features" "daemon-sys-linux-port"))
+				     (:file "daemon-utils-linux-port" :depends-on ("daemon-logging" "daemon-features" "daemon-sys-linux-port"))
 				     #+linux 
-				     (:file "daemon-core-linux-port" :depends-on ("daemon-features" 
+				     (:file "daemon-core-linux-port" :depends-on ("daemon-logging" 
+										  "daemon-features" 
 										  "daemon-sys-linux-port" 
 										  "daemon-utils-linux-port"))
-				     (:file "daemon-utils-port" :depends-on ("daemon-features"
+				     (:file "daemon-utils-port" :depends-on ("daemon-logging" 
+									     "daemon-features"
 									     #+linux "daemon-utils-linux-port"
 									     #-linux (error "Not implemented on not Linux")
 									     ))
-				     (:file "daemon-core-port" :depends-on ("daemon-features"
+				     (:file "daemon-core-port" :depends-on ("daemon-logging" 
+									    "daemon-features"
 									    "daemon-utils-port"
 									     #+linux "daemon-core-linux-port"
 									     #-linux (error "Not implemented on not Linux")
 									     ))
-				     (:file "daemonization" :depends-on ("daemon-core-port"))))))
+				     (:file "daemonization" :depends-on ("daemon-logging" "daemon-core-port"))))))
 				     
 			
