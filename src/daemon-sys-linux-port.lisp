@@ -34,8 +34,9 @@
 
 (in-package :daemon-sys-linux-port)
 ;;; Correct log-info and log-err (function from :daemon-logging)
-(setf (symbol-function 'log-info) (symbol-function 'daemon-logging:log-info))
-(setf (symbol-function 'log-err) (symbol-function 'daemon-logging:log-err))
+(eval-when (:compile-toplevel)
+  (setf (macro-function 'log-info) (macro-function 'daemon-logging:log-info))
+  (setf (macro-function 'log-err) (macro-function 'daemon-logging:log-err)))
 
 ;;; Logging
 ;(defconstant +log-layer+ :sys-linux-layer)
@@ -75,9 +76,9 @@
      (sb-posix::define-call ,name ,@args)
      (let ((fn-sym (find-symbol (string-upcase ,fn-str-name) :sb-posix))
 	   (fn-using-sym (read-from-string ,fn-str-name)))
-       (log-info "try defining ~S ..." ,name)
+       (log-info "try defining ~S ..." ,name)       
        (setf (symbol-function fn-using-sym) (symbol-function fn-sym))
-       (log-info " ... OK. (symbol-function ~S) => ~S"
+       (log-info " ... OK. (symbol-function '~S) => ~S"
 	       fn-using-sym (symbol-function fn-using-sym)))))
 
 ;; Define initgroups

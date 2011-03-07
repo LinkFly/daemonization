@@ -4,6 +4,16 @@
  
 
 (in-package :daemonization)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Logging checking
+;(log-info "test")
+;(defun-ext f (x y) (log-info "this f") (+ x (g y)))
+;(defun-ext g (x) (log-info "this g") (* x x))
+;(f 3 4)
+;(daemon-logging::f 3 4 :z 1)
+;(defun f (x &key y) (+ x y))
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (defmacro define-constant (name value &optional doc)
        `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
