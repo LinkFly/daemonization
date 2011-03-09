@@ -20,7 +20,8 @@
 ;(f 3 4)
 ;;;;;;;;;;;;;;;;;
 
-(defparameter *log-indent* 0)
+(defparameter *log-indent* 2)
+;(defparameter *log-indent-size* 2)
 (defparameter *print-log-layer* t)
 (defparameter *print-internal-call* t)
 
@@ -28,7 +29,7 @@
 (defparameter *def-in-package* nil)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun get-indent ()
-  (coerce (loop repeat *log-indent* collect #\Tab) 'string))
+  (make-string *log-indent* :initial-element #\Space))
 
 (defun wrap-fmt-str (fmt-str)
   (format nil
@@ -105,16 +106,18 @@
 	 for arg in args
 	 do (if (and (symbolp arg) (char= #\& (elt (symbol-name arg) 0)))
 		(setq cur-arg-type arg)
-		(case cur-arg-type
-		  (nil (push arg result))
-		  (&optional (push arg result))
-		  (&key (push (as-keyword arg) result)
-			(push arg result))
-		  (&rest (push ''&rest result)
-			 (push arg result))
-		  (&aux nil)))
+		(if (null cur-arg-type)
+		    (push arg result)
+		    (case cur-arg-type
+		      (&optional (push arg result))
+		      (&key (push (as-keyword arg) result)
+			    (push arg result))
+		      (&rest (push ''&rest result)
+			     (push arg result))
+		      (&aux nil))))
 	 finally (return (reverse result)))))
-  ;(present-args '(x y &optional (v 34) &key r m))  
+  ;(present-args '("no-daemon"))
+  ;(present-args '(x y &optional (v 34) &key r m))    
   );eval-when 
 
 (defun correct-sym (sym)
@@ -179,7 +182,7 @@
     `(defun ,name ,args
        (let* ((*def-in-package* (load-time-value *package*))
 	     (*log-indent* *log-indent*)
-	     (,form-str (present-form (cons ',name ',(present-args args)))))
+	     (,form-str (present-form (list ',name ,@(present-args args)))))
 	 (syslog-call-info ,form-str)
 	 (let ((res (progn ,@(remove-declare-ignore body))))
 	   (syslog-call-out res ,form-str)
