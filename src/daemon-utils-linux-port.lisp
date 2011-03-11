@@ -1,6 +1,6 @@
 (defpackage :daemon-utils-linux-port
   (:use :cl :daemon-logging :daemon-sys-linux-port)
-  (:shadow #:log-info #:log-err)
+  ;(:shadow #:log-info #:log-err)
   (:shadowing-import-from :daemon-sys-linux-port #:open #:close)
   (:export #:set-current-dir #:set-umask
 	   #:detach-from-tty #:switch-to-slave-pseudo-terminal #:start-new-session
@@ -11,6 +11,8 @@
 	   ))
 
 (in-package :daemon-utils-linux-port)
+;(unintern (find-symbol "LOG-INFO"))
+;(unintern (find-symbol "LOG-ERR"))
 ;;; Correct log-info and log-err (function from :daemon-logging, value from :daemon-sys-linux-port)
 ;(setf (symbol-function 'log-info) (symbol-function 'daemon-logging:log-info))
 ;(setf log-info daemon-sys-linux-port:log-info)

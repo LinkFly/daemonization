@@ -1,18 +1,61 @@
 (defpackage :daemon-logging 
   (:use :cl)
   (:export #:log-info #:log-err #:defun-ext #:wrap-log
-	   #:*log-indent* #:*print-log-layer* #:*print-internal-call*))
+	   #:*print-log-info* #:*print-log-err*
+	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
+	   #:*print-call #:*print-called-form-with-result*))
 
 (in-package :daemon-logging)
+
+;;; Logging configure parameters
+(defparameter *log-indent* 0)
+(defparameter *log-indent-size* 2)
+(defparameter *print-log-info* t)
+(defparameter *print-log-err* t)
+(defparameter *print-log-layer* t)
+(defparameter *print-internal-call* t)
+(defparameter *print-call* t)
+(defparameter *print-called-form-with-result* nil)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;;; Logging for actions on differently layers, for using
 ;;; defining +log-layer+ (if it not defining then reading name of current package), 
 ;;; *fn-log-info*, and *fn-log-err* special variables. Example:
+
 (defconstant +log-layer+ :logging-layer)
 (defparameter *fn-log-info* #'(lambda (fmt-str &rest args)
-				(apply #'format t  fmt-str args)))
-(defparameter *fn-log-err #'(lambda (fmt-str &rest args)
-				(apply #'format t  fmt-str args)))
+				(apply #'format t fmt-str args)))
+(defparameter *fn-log-err* #'(lambda (fmt-str &rest args)
+				(apply #'format t fmt-str args)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; For defun-ext and wrap-fmt-str ;;;;;;;;;;;;;;;;;;
+(defparameter *def-in-package* nil)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun get-indent ()
+  (make-string *log-indent* :initial-element #\Space))
+
+(defun get-log-fn (fn-log-str)
+  (let ((sym (when *def-in-package* (find-symbol fn-log-str *def-in-package*))))
+    (if (and sym (boundp sym))
+	(symbol-value sym)
+	(symbol-value (find-symbol fn-log-str *package*)))))
+
+(defun get-fn-log-info ()
+  (get-log-fn (symbol-name '*FN-LOG-INFO*)))
+(defun get-fn-log-err ()
+  (get-log-fn (symbol-name '*FN-LOG-ERR*)))
+
+(defun get-log-layer ()
+  (let ((layer-sym (when *def-in-package* (find-symbol (symbol-name '+LOG-LAYER+) *def-in-package*))))
+    (if (and layer-sym (boundp layer-sym)) 
+	(format nil "~S" (symbol-value layer-sym))
+	(concatenate 'string ":" (package-name (or *def-in-package* *package*))))))
+
+
 ;;; Checking
+;(get-log-layer)
 ;(log-info "test")
 ;(syslog-info "test")
 ;(defun-ext f (x y) (log-info "this f") (+ x (g y)))
@@ -20,47 +63,30 @@
 ;(f 3 4)
 ;;;;;;;;;;;;;;;;;
 
-(defparameter *log-indent* 2)
-;(defparameter *log-indent-size* 2)
-(defparameter *print-log-layer* t)
-(defparameter *print-internal-call* t)
-
-;;; For defun-ext and wrap-fmt-str ;;;;;;;;;;;;;;;;;;
-(defparameter *def-in-package* nil)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun get-indent ()
-  (make-string *log-indent* :initial-element #\Space))
-
 (defun wrap-fmt-str (fmt-str)
   (format nil
-	  "~%(:DAEMONIZATION ~A ~A~A)"
+	  "~%(:DAEMONIZATION~A ~A~A)"
 	  (if *print-log-layer* 
-	      (let ((layer-sym (find-symbol "+LOG-LAYER+" *package*)))
-		(if (and layer-sym (boundp layer-sym)) 
-		    (format nil "~S" (symbol-value layer-sym))
-		    (if *def-in-package*
-			(concatenate 'string ":" (package-name *def-in-package*))
-			"")))
-	      "") 
+	      (format nil " ~A" (get-log-layer))
+	      "")
 	  (get-indent)
 	  fmt-str))
 
-(defun logging (fn-log-str format-str &rest args)
-  (apply (symbol-value (find-symbol fn-log-str *def-in-package*))
-	 (wrap-fmt-str format-str)
-	 args))
+(defun logging (fn-log format-str &rest args)
+  (apply fn-log (wrap-fmt-str format-str) args))
 
-(defmacro syslog-info (format-str &rest args)  
-  `(progn
-     (logging "*FN-LOG-INFO*" ,format-str ,@args)))
+(defun syslog-info (format-str &rest args)  
+  (apply #'logging (get-fn-log-info) format-str args))
 
 (defmacro log-info (format-str &rest args)
-  `(let ((*def-in-package* (load-time-value *package*)))     
-     (logging "*FN-LOG-INFO*" (format nil "~S" ,format-str) ,@args)))
+  `(when *print-log-info* 
+     (let ((*def-in-package* (load-time-value *package*)))     
+       (logging (get-fn-log-info) (format nil "~S" ,format-str) ,@args))))
 
 (defmacro log-err (format-str &rest args)
-  `(let ((*def-in-package* (load-time-value *package*)))     
-     (logging "*FN-LOG-ERR*" (format nil "~S" ,format-str) ,@args)))
+  `(when *print-log-err*
+     (let ((*def-in-package* (load-time-value *package*)))     
+       (logging (get-fn-log-err) (format nil "~S" ,format-str) ,@args))))
 
 (defun as-string (sexpr)
   (unless (stringp sexpr)
@@ -69,13 +95,17 @@
 
 (defun syslog-call-info (form)
   (syslog-info (format nil ":CALL ~A" (as-string form)))
-  (incf *log-indent*))
+  (incf *log-indent* *log-indent-size*))
   
-(defun syslog-call-out (result form)
-  (if (zerop *log-indent*)
+(defun syslog-call-out (result &optional form)  
+  (decf *log-indent* *log-indent-size*)
+  (if (< *log-indent* 0)
       (error "*log-indent* not must be less zero. Not correct log operation."))
-  (decf *log-indent*)
-  (syslog-info ":RESULT ~S :CALLED-FORM ~A)" result (as-string form)))
+  (syslog-info ":RESULT ~S ~A"
+	       result 
+	       (if form 
+		   (format nil ":CALLED-FORM ~A)" (as-string form))
+		   "")))
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -92,6 +122,7 @@
       (loop for form in body 
 	 when (or (atom form) (not (declare-ignore-form-p form)))
 	 collect form)))
+
   ;(remove-declare-ignore '((declare (ignore x)) (declare (ignorable y)) (+ 3 2) t))    
 
   (defun present-args (args)
@@ -109,9 +140,15 @@
 		(if (null cur-arg-type)
 		    (push arg result)
 		    (case cur-arg-type
-		      (&optional (push arg result))
-		      (&key (push (as-keyword arg) result)
-			    (push arg result))
+		      (&optional (push (if (atom arg) 
+					   arg
+					   (first arg))
+				     result))
+		      (&key (let ((arg (if (atom arg) 
+					   arg
+					   (first arg))))
+			      (push (as-keyword arg) result)
+			      (push arg result)))
 		      (&rest (push ''&rest result)
 			     (push arg result))
 		      (&aux nil))))
@@ -138,10 +175,9 @@
       (let ((res-str (format nil
 			     "(~{~A ~}" 
 			     (loop for obj in form
-				if (symbolp obj) do (setq obj (correct-sym obj))
-				else do (setq obj (format nil "~S" obj))
-				end
-				collect obj))))
+				collect (if (symbolp obj) 
+					    (correct-sym obj)
+					    (format nil "~S" obj))))))
 	(concatenate 'string
 		     (subseq res-str 0 (1- (length res-str)))
 		     ")"))))
@@ -162,31 +198,36 @@
 |#
 
 (defmacro wrap-log-form (form)
-  (with-gensyms (form-str)
+  (with-gensyms (form-str res fn args)
     `(if (not *print-internal-call*)
 	 ,form
 	 (let* ((*def-in-package* (load-time-value *package*))
 		(*log-indent* *log-indent*)
-		(,form-str (present-form ',form)))
+		(,fn ',(first form))
+		(,args ,(cons 'list (rest form)))
+		(,form-str (present-form (cons ,fn ,args))))
 	   (syslog-call-info ,form-str)
-	   (let ((res ,form))
-	     (syslog-call-out res ,form-str)
-	     res)))))
+	   (let ((,res (apply ,fn ,args)))
+	     (syslog-call-out ,res (when *print-called-form-with-result* ,form-str))
+	     ,res)))))
 
 (defmacro wrap-log (&rest forms)
   `(progn ,@(loop for form in forms
 	       collect `(wrap-log-form ,form))))
 
 (defmacro defun-ext (name args &body body)
-  (with-gensyms (form-str)
+  (with-gensyms (form-str res)
     `(defun ,name ,args
        (let* ((*def-in-package* (load-time-value *package*))
 	     (*log-indent* *log-indent*)
 	     (,form-str (present-form (list ',name ,@(present-args args)))))
-	 (syslog-call-info ,form-str)
-	 (let ((res (progn ,@(remove-declare-ignore body))))
-	   (syslog-call-out res ,form-str)
-	   res)))))
+	 (when *print-call* (syslog-call-info ,form-str))
+;	 (let ((res (progn ,@(remove-declare-ignore body))))
+;	 (let ((,res (locally ,@body)))
+	 (let ((,res (locally ,@(remove-declare-ignore body))))
+	   (when *print-call* 
+	     (apply #'syslog-call-out ,res (when *print-called-form-with-result* (list ,form-str))))
+	   ,res)))))
 
 ;(defun-ext f (x y &key z) (log-info "this f") (+ x z (g y)))
 ;(defun-ext g (x) (log-info "this g") (* x x))

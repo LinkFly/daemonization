@@ -88,5 +88,4 @@
 
 (defun-ext start-as-no-daemon (fn)
   (funcall fn))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -22,8 +22,10 @@
 (define-constant +all-daemon-commands+ '("start" "stop" "zap" "kill" "restart" "nodaemon")) 
 
 (defun-ext check-daemon-command (cmd)
+  (log-info "Check daemon command ...")
   (unless (find cmd +all-daemon-commands+ :test #'string-equal)
     (error "Bad command-line options"))
+  (log-info " ... OK.")
   cmd)
 
 (defmacro case-command (cmd &rest cases-bodies)
@@ -32,6 +34,7 @@
 	  collect `((string-equal ,cmd ,(first clause))
 		    ,@(rest clause)))))
 
+;(wrap-log (member "3" '("1" "2" "3") :test #'string-equal))
 (defun-ext daemonized (daemon-command 
 		   &key main-function name user group pid-file)
 					;		   &aux as-daemon-p)
