@@ -200,7 +200,7 @@
 		       (str-list-close 
 			(format nil "(~{~A ~}" (mapcar #'present-form form)))))
     ((symbolp form) (correct-sym form))
-    ((functionp form) (format nil "~S" (present-function form)))    
+;    ((functionp form) (format nil "~S" (present-function form)))    
     (t (format nil 
 	       (if (object-is-not-printable-p form)
 		   "|~S|"
