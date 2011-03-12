@@ -101,7 +101,7 @@
   (decf *log-indent* *log-indent-size*)
   (if (< *log-indent* 0)
       (error "*log-indent* not must be less zero. Not correct log operation."))
-  (syslog-info ":RESULT ~S ~A"
+  (syslog-info ":RESULT ~A ~A"
 	       result 
 	       (if form 
 		   (format nil ":CALLED-FORM ~A)" (as-string form))
@@ -181,6 +181,12 @@
 	  fn-list))
 |#
 
+(defun object-is-not-printable-p (obj)
+  (handler-case (let ((*print-readably* t)) 
+		  (format nil "~S" obj)
+		  nil)
+    (print-not-readable () t)))
+
 (defun str-list-close (str)
   (concatenate 'string
 	       (subseq str 0 (1- (length str)))
@@ -195,23 +201,11 @@
 			(format nil "(~{~A ~}" (mapcar #'present-form form)))))
     ((symbolp form) (correct-sym form))
     ((functionp form) (format nil "~S" (present-function form)))    
-    (t (format nil "~S" form))))
-
-(defun present-form (form)    	
-  (if (null form) 
-      ""
-      (let ((res-str (format nil
-			     "(~{~A ~}" 
-			     (loop for obj in form
-				collect (cond 
-					  ((symbolp obj) (correct-sym obj))
-					  ((functionp obj) (format nil "~S" (present-function obj)))
-					  (t (format nil "~S" obj)))))))
-					    
-	(concatenate 'string
-		     (subseq res-str 0 (1- (length res-str)))
-		     ")"))))
-
+    (t (format nil 
+	       (if (object-is-not-printable-p form)
+		   "|~S|"
+		   "~S")
+	       form))))
 
 #|
   (present-form '(daemonization::define-constant f (x) (* x x)));
@@ -239,7 +233,7 @@
 		(,form-str (present-form (cons ,fn ,args))))
 	   (syslog-call-info ,form-str)
 	   (let ((,res (apply ,fn ,args)))
-	     (syslog-call-out ,res (when *print-called-form-with-result* ,form-str))
+	     (syslog-call-out (present-form ,res) (when *print-called-form-with-result* ,form-str))
 	     ,res)))))
 
 (defmacro wrap-log (&rest forms)
@@ -262,7 +256,7 @@
 ;	 (let ((,res (locally ,@body)))
 	 (let ((,res (locally ,@(remove-declare-ignore body))))
 	   (when *print-call* 
-	     (apply #'syslog-call-out ,res (when *print-called-form-with-result* (list ,form-str))))
+	     (apply #'syslog-call-out (present-form ,res) (when *print-called-form-with-result* (list ,form-str))))
 	   ,res)))))
 
 ;(defun-ext f (x y &key z) (log-info "this f") (+ x z (g y)))
