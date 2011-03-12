@@ -53,6 +53,6 @@
   ) ;feature :as-daemon					
 
 (defun-ext simple-start (params)
-;  (restrict-rights :new-user (getf params :user) 
-	;	   :new-group (getf params :group))
+  (restrict-rights :new-user (getf params :user) 
+		   :new-group (getf params :group))
   (start-as-no-daemon (getf params :main-function)))

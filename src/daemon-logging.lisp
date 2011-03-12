@@ -169,18 +169,49 @@
       (correct-sym 'daemonization::define-constant))
   |#
 
+(defun present-function (function)  
+  (third (multiple-value-list (function-lambda-expression function))))
+
+
+#|(defun represent-functions (fn-list)
+  (mapcar #'(lambda (sexp)
+	      (if (typep sexp 'function)
+		  (present-function sexp)
+		  sexp))
+	  fn-list))
+|#
+
+(defun str-list-close (str)
+  (concatenate 'string
+	       (subseq str 0 (1- (length str)))
+	       ")"))
+
+(defun present-form (form)  
+  (cond 
+    ((consp form)  (if (and (= 2 (length form)) 
+			    (eq 'quote (first form)))
+		       (format nil "'~A" (present-form (second form)))
+		       (str-list-close 
+			(format nil "(~{~A ~}" (mapcar #'present-form form)))))
+    ((symbolp form) (correct-sym form))
+    ((functionp form) (format nil "~S" (present-function form)))    
+    (t (format nil "~S" form))))
+
 (defun present-form (form)    	
   (if (null form) 
       ""
       (let ((res-str (format nil
 			     "(~{~A ~}" 
 			     (loop for obj in form
-				collect (if (symbolp obj) 
-					    (correct-sym obj)
-					    (format nil "~S" obj))))))
+				collect (cond 
+					  ((symbolp obj) (correct-sym obj))
+					  ((functionp obj) (format nil "~S" (present-function obj)))
+					  (t (format nil "~S" obj)))))))
+					    
 	(concatenate 'string
 		     (subseq res-str 0 (1- (length res-str)))
 		     ")"))))
+
 
 #|
   (present-form '(daemonization::define-constant f (x) (* x x)));
@@ -220,7 +251,12 @@
     `(defun ,name ,args
        (let* ((*def-in-package* (load-time-value *package*))
 	     (*log-indent* *log-indent*)
-	     (,form-str (present-form (list ',name ,@(present-args args)))))
+	     (,form-str (present-form (cons ',name 
+					    (mapcar #'(lambda (arg)
+							(if (consp arg)
+							    (list 'quote arg)
+							    arg))
+						    (list ,@(present-args args)))))))
 	 (when *print-call* (syslog-call-info ,form-str))
 ;	 (let ((res (progn ,@(remove-declare-ignore body))))
 ;	 (let ((,res (locally ,@body)))
