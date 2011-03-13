@@ -2,7 +2,7 @@
   `(defpackage :daemon-unix-api 
      (:use :cl :daemon-logging :daemon-sys-linux-port)		      
      (:shadow ,@(daemon-sys-linux-port:get-unix-fn-syms))
-     (:export ,@(daemon-sys-linux-port:get-unix-fn-syms)
+     (:export ,@(daemon-sys-linux-port:get-unix-fn-syms)  
 	      ,@(daemon-sys-linux-port:get-unix-constants))))
 
 (define-package-daemon-unix-api)

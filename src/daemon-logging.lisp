@@ -17,6 +17,10 @@
 (defparameter *print-internal-call* t)
 (defparameter *print-call* t)
 (defparameter *print-called-form-with-result* nil)
+(defparameter *disabled-functions-logging* nil)
+(defparameter *disabled-layers-logging* nil)
+;(setf *disabled-layers-logging* '(:daemon-core-linux-port :daemon-unix-api))
+;(setf *disabled-functions-logging* '(daemon-core-linux-port:start-as-no-daemon))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Logging for actions on differently layers, for using
@@ -223,18 +227,28 @@
 		       ")"))
 |#
 
+(defun is-logging-p (fn-sym package)
+  (not (member fn-sym *disabled-functions-logging*))
+  (not (member (package-name package)
+	       *disabled-layers-logging* 
+	       :test #'string-equal
+	       :key #'princ-to-string)))
+
 (defmacro wrap-log-form (form)
-  (with-gensyms (form-str res fn args)
+  (with-gensyms (form-str res fn args this-name)
     `(if (not *print-internal-call*)
 	 ,form
-	 (let* ((*def-in-package* (load-time-value *package*))
+	 (let* ((,this-name ',(first form))
+		(*def-in-package* (load-time-value *package*))
 		(*log-indent* *log-indent*)
 		(,fn ',(first form))
 		(,args ,(cons 'list (rest form)))
 		(,form-str (present-form (cons ,fn ,args))))
-	   (syslog-call-info ,form-str)
+	   (when (is-logging-p ,this-name *def-in-package*)
+	     (syslog-call-info ,form-str))
 	   (let ((,res (apply ,fn ,args)))
-	     (syslog-call-out (present-form ,res) (when *print-called-form-with-result* ,form-str))
+	     (when (is-logging-p ,this-name *def-in-package*)
+	       (syslog-call-out (present-form ,res) (when *print-called-form-with-result* ,form-str)))
 	     ,res)))))
 
 (defmacro wrap-log (&rest forms)
@@ -242,21 +256,23 @@
 	       collect `(wrap-log-form ,form))))
 
 (defmacro defun-ext (name args &body body)
-  (with-gensyms (form-str res)
+  (with-gensyms (form-str res this-name)
     `(defun ,name ,args
-       (let* ((*def-in-package* (load-time-value *package*))
-	     (*log-indent* *log-indent*)
-	     (,form-str (present-form (cons ',name 
-					    (mapcar #'(lambda (arg)
-							(if (consp arg)
-							    (list 'quote arg)
-							    arg))
-						    (list ,@(present-args args)))))))
-	 (when *print-call* (syslog-call-info ,form-str))
+       (let* ((,this-name ',name)
+	      (*def-in-package* (load-time-value *package*))
+	      (*log-indent* *log-indent*)
+	      (,form-str (present-form (cons ',name 
+					     (mapcar #'(lambda (arg)
+							 (if (consp arg)
+							     (list 'quote arg)
+							     arg))
+						     (list ,@(present-args args)))))))
+	 (when (and *print-call* (is-logging-p ,this-name *def-in-package*))
+	   (syslog-call-info ,form-str))
 ;	 (let ((res (progn ,@(remove-declare-ignore body))))
 ;	 (let ((,res (locally ,@body)))
 	 (let ((,res (locally ,@(remove-declare-ignore body))))
-	   (when *print-call* 
+	   (when (and *print-call* (is-logging-p ,this-name *def-in-package*))
 	     (apply #'syslog-call-out (present-form ,res) (when *print-called-form-with-result* (list ,form-str))))
 	   ,res)))))
 

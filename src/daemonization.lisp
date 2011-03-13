@@ -4,6 +4,7 @@
  
 
 (in-package :daemonization)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Logging checking
 ;(log-info "test")
