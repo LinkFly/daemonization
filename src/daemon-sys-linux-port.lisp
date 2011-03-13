@@ -30,29 +30,95 @@
 	   #:chdir #:getcwd #:umask #:setsid #:ioctl #:close
 	   #:dup #:dup2
 	   #:tiocnotty #:syslog
-	   #:*fn-log-info* #:*fn-log-err*))
+	   #:*fn-log-info* #:*fn-log-err*
+	   ;#:+for-daemon-unix-functions+ #:get-unix-symbols
+	   #:get-unix-functions #:get-unix-fn-syms #:get-unix-constants
+	   ))
 
 (in-package :daemon-sys-linux-port)
+
+;;;;;;;;;;;;;;;;;; Compilation stage ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; For shadowing in daemon-unix-api 
+(defmacro define-constant (name value &optional doc)
+  `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
+     ,@(when doc (list doc))))
+
+(define-constant +for-daemon-unix-functions+
+    '((open pathname flags &optional mode)
+      (ioctl fd cmd &optional arg)
+      (close fd)
+      (grantpt fd)
+      (unlockpt fd)
+      (ptsname fd)
+      (dup oldfd)
+      (dup2 oldfd newfd)
+      (setsid)
+      (getpwnam login-name)
+
+      (fork)      
+      (exit &optional (status daemon-sys-linux-port:ex-ok))
+      (kill pid signal)
+
+      (getcwd)
+      (chdir pathname)
+      (umask mode)
+      (getpid)
+      (getgrnam login-name) 
+      (getppid)
+
+      o-rdwr
+      o-rdonly
+      o-creat 
+      o-trunc 
+      o-wronly 
+      sigusr1
+      sigchld
+      sigkill
+
+      ;not posix
+      (group-gid object)
+      (passwd-gid object)
+      (setresgid rgid egid sgid)
+      (initgroups user group)
+      (setresuid ruid euid suid)
+      (prctl option arg)
+      (cap-from-text text)
+      (cap-set-proc cap_p)
+      (cap-free cap_p)
+      (enable-interrupt signal handler)
+      
+      (passwd-uid object)
+      ex-ok
+      ex-software  
+      s-iread
+      s-iroth 
+      s-iwrite
+      +pr_set_keepcaps+ 
+      tiocnotty		
+      ))
+
+(eval-when (:compile-toplevel :load-toplevel)
+  (defun get-unix-functions ()
+    (remove-if #'symbolp +for-daemon-unix-functions+))
+  (defun get-unix-fn-syms ()
+    (mapcar #'first (get-unix-functions)))
+  (defun get-unix-constants ()
+    (remove-if (complement #'symbolp) +for-daemon-unix-functions+))
+
+  #|(defun get-unix-symbols () 
+    (mapcar #'(lambda (form)
+		(typecase form
+		  (cons (first form))
+		  (symbol form)))
+	    +for-daemon-unix-functions+))|#
+  )
+
 ;;; Correct log-info and log-err (function from :daemon-logging)
 (eval-when (:compile-toplevel)
   (setf (macro-function 'log-info) (macro-function 'daemon-logging:log-info))
   (setf (macro-function 'log-err) (macro-function 'daemon-logging:log-err)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; Logging
-;(defconstant +log-layer+ :sys-linux-layer)
-(defparameter *fn-log-info* #'(lambda (fmt-str &rest args)
-				(syslog log-info (princ (apply #'format nil fmt-str args)))))
-(defparameter *fn-log-err* #'(lambda (fmt-str &rest args)
-				(syslog log-err (princ (concatenate 'string "ERR: " (apply #'format nil fmt-str args))))))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Logging checking
-;(log-info "test")
-;(defun-ext f (x y) (log-info "this f") (+ x (g y)))
-;(defun-ext g (x) (log-info "this g") (* x x))
-;(f 3 4)
-;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;;;;;;;;;;;;;;;;; Compilation stage ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; For definition cap-from-text, cap-set-proc and cap-free
 #+(and sbcl daemon.listen-privileged-ports)
 (eval-when (:compile-toplevel :load-toplevel)
@@ -62,6 +128,13 @@
 
 (defconstant ex-ok 0)
 (defconstant ex-software 70)
+
+;;; Logging
+(defparameter *fn-log-info* #'(lambda (fmt-str &rest args)
+				(syslog log-info (princ (apply #'format nil fmt-str args)))))
+(defparameter *fn-log-err* #'(lambda (fmt-str &rest args)
+				(syslog log-err (princ (concatenate 'string "ERR: " (apply #'format nil fmt-str args))))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun exit (&optional (status ex-ok))
   #-sbcl (error "Not implemented on not sbcl lisps")
@@ -73,10 +146,10 @@
   (setq fn-str-name (string-upcase 
 		     (substitute #\- #\_ name)))
   `(progn 
+     (log-info "try defining ~S ..." ,name)       
      (sb-posix::define-call ,name ,@args)
      (let ((fn-sym (find-symbol (string-upcase ,fn-str-name) :sb-posix))
 	   (fn-using-sym (read-from-string ,fn-str-name)))
-       (log-info "try defining ~S ..." ,name)       
        (setf (symbol-function fn-using-sym) (symbol-function fn-sym))
        (log-info " ... OK. (symbol-function '~S) => ~S"
 	       fn-using-sym (symbol-function fn-using-sym)))))

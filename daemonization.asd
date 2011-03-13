@@ -15,11 +15,16 @@
 				     #+linux 
 				     (:file "daemon-sys-linux-port" :depends-on ("daemon-logging" "daemon-features"))
 				     #+linux 
-				     (:file "daemon-utils-linux-port" :depends-on ("daemon-logging" "daemon-features" "daemon-sys-linux-port"))
+				     (:file "daemon-unix-api" :depends-on ("daemon-logging" "daemon-sys-linux-port"))
+				     #+linux 
+				     (:file "daemon-utils-linux-port" :depends-on ("daemon-logging" "daemon-features" 
+												    "daemon-sys-linux-port"
+												    "daemon-unix-api"))
 				     #+linux 
 				     (:file "daemon-core-linux-port" :depends-on ("daemon-logging" 
 										  "daemon-features" 
-										  "daemon-sys-linux-port" 
+										  "daemon-sys-linux-port"
+										  "daemon-unix-api"
 										  "daemon-utils-linux-port"))
 				     (:file "daemon-utils-port" :depends-on ("daemon-logging" 
 									     "daemon-features"

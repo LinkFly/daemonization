@@ -16,8 +16,8 @@
 
 
 (defmacro define-constant (name value &optional doc)
-       `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
-                           ,@(when doc (list doc))))
+  `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
+     ,@(when doc (list doc))))
 
 (define-constant +all-daemon-commands+ '("start" "stop" "zap" "kill" "restart" "nodaemon")) 
 

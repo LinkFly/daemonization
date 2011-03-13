@@ -1,7 +1,7 @@
 (defpackage :daemon-utils-linux-port
-  (:use :cl :daemon-logging :daemon-sys-linux-port)
-  ;(:shadow #:log-info #:log-err)
-  (:shadowing-import-from :daemon-sys-linux-port #:open #:close)
+  (:use :cl :daemon-logging :daemon-unix-api)
+  (:shadowing-import-from :daemon-unix-api #:open #:close)
+  (:import-from :daemon-sys-linux-port #:*fn-log-info* #:*fn-log-err*)		
   (:export #:set-current-dir #:set-umask
 	   #:detach-from-tty #:switch-to-slave-pseudo-terminal #:start-new-session
 	   #:preparation-before-grant-listen-privileged-ports	   
@@ -11,27 +11,55 @@
 	   ))
 
 (in-package :daemon-utils-linux-port)
-;(unintern (find-symbol "LOG-INFO"))
-;(unintern (find-symbol "LOG-ERR"))
-;;; Correct log-info and log-err (function from :daemon-logging, value from :daemon-sys-linux-port)
-;(setf (symbol-function 'log-info) (symbol-function 'daemon-logging:log-info))
-;(setf log-info daemon-sys-linux-port:log-info)
-;(setf (symbol-function 'log-err) (symbol-function 'daemon-logging:log-err))
-;(setf log-err daemon-sys-linux-port:log-err)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Logging
-;(defconstant +log-layer+ :os-linux-layer)
-;(defparameter *fn-log-info* #'(lambda (fmt-str &rest args)
-;				(syslog log-info (princ (apply #'format nil fmt-str args)))))
-;(defparameter *fn-log-err* #'(lambda (fmt-str &rest args)
-;				(syslog log-err (princ (concatenate 'string "ERR: " (apply #'format nil fmt-str args))))))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Logging checking
-;(log-info "test")
-;(defun-ext f (x y) (log-info "this f") (+ x (g y)))
-;(defun-ext g (x) (log-info "this g") (* x x))
-;(f 3 4)
-;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;(mapcar #'(lambda (sym) (unintern (find-symbol sym *package*))) '("EX-SOFTWARE" "EX-OK" "PASSWD-UID" "GETPPID" "SIGUSR1"))
+#|(defmacro add-logging (package fn-sym-list)
+  (loop for fn-sym in fn-sym-list
+     do (shadow fn-sym))
+  `(progn 
+     ,@(loop for fn-sym in fn-sym-list
+	  collect `(progn
+		     (defun-ext ,(find-symbol (symbol-name fn-sym) *package*) (&rest args)
+		       (apply (symbol-function (find-symbol (symbol-name ',fn-sym)
+							    ,package))
+			      args))))))
+;(macroexpand-1 '(add-logging :daemon-sys-linux-port (open ioctl)))
+|#
+
+(defmacro wrap-log (&body body)
+  `(progn ,@body))
+	       
+#|(add-logging :daemon-sys-linux-port
+	     (open
+	       ioctl
+	       close
+	       grantpt
+	       unlockpt
+	       ptsname
+	       dup
+	       dup2
+	       setsid
+	       getpwnam
+
+	       fork
+	       sleep
+	       exit
+	       kill
+
+	       ;not posix
+	       group-gid
+	       passwd-gid
+	       setresgid
+	       initgroups
+	       setresuid
+	       prctl
+	       cap-from-text
+	       cap-set-proc
+	       cap-free
+	       enable-interrupt
+
+	       ))
+|#
 
 (defun-ext set-current-dir (path)
   (log-info "changing directory, current directory: ~S ..." path (getcwd))
@@ -112,11 +140,9 @@
 #+daemon.listen-privileged-ports
 (progn 
   (defun-ext preparation-before-grant-listen-privileged-ports ()
-    #+linux 
     (wrap-log (prctl +PR_SET_KEEPCAPS+ 1)))
 
   (defun-ext set-grant-listen-privileged-ports ()
-    #+linux
     (let ((cap_p (wrap-log (cap-from-text "CAP_NET_BIND_SERVICE=ep"))))
       (wrap-log (cap-set-proc cap_p))
       (wrap-log (cap-free cap_p))))
@@ -144,12 +170,12 @@
      (unless (= (wrap-log (fork)) 0)
        (loop
 	  while (null (get-status))
-	  do (wrap-log (sleep 0.1)))
+	  do (daemon-logging::wrap-log-form (sleep 0.1)))
        (wrap-log (exit (if (= (get-status) sigusr1)
 			   ex-ok
 			   ex-software))))
 
-     (wrap-log ,child-form-after-fork
+     (wrap-log ,child-form-after-fork 
 	       (enable-interrupt sigusr1 :default)
 	       (enable-interrupt sigchld :default)
 	       ,child-form-before-send-success
