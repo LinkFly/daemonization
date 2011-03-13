@@ -65,7 +65,7 @@
 
 (defun wrap-fmt-str (fmt-str)
   (format nil
-	  "~%(:DAEMONIZATION~A ~A~A)"
+	  "~%(:DAEMONIZATION~25A ~A~A)"
 	  (if *print-log-layer* 
 	      (format nil " ~A" (get-log-layer))
 	      "")
