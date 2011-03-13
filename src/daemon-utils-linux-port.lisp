@@ -126,7 +126,7 @@
 
 #+daemon.change-user
 (defun-ext linux-change-user (name &optional group)
-  (let* ((passwd (wrap-log (getpwnam name)))
+  (let* ((passwd (getpwnam name))
 	 (gid (if group
 		  (group-gid (wrap-log (getgrnam group)))
 		  (passwd-gid passwd)))
