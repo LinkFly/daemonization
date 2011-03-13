@@ -30,8 +30,6 @@
 	   #:chdir #:getcwd #:umask #:setsid #:ioctl #:close
 	   #:dup #:dup2
 	   #:tiocnotty #:syslog
-	   #:*fn-log-info* #:*fn-log-err*
-	   ;#:+for-daemon-unix-functions+ #:get-unix-symbols
 	   #:get-unix-functions #:get-unix-fn-syms #:get-unix-constants
 	   ))
 
@@ -129,9 +127,9 @@
 (defconstant ex-software 70)
 
 ;;; Logging
-(defparameter *fn-log-info* #'(lambda (fmt-str &rest args)
+(defparameter daemon-logging:*fn-log-info #'(lambda (fmt-str &rest args)
 				(syslog log-info (princ (apply #'format nil fmt-str args)))))
-(defparameter *fn-log-err* #'(lambda (fmt-str &rest args)
+(defparameter daemon-logging:*fn-log-err* #'(lambda (fmt-str &rest args)
 				(syslog log-err (princ (concatenate 'string "ERR: " (apply #'format nil fmt-str args))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

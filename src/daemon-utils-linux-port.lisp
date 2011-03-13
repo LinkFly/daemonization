@@ -6,9 +6,7 @@
 	   #:detach-from-tty #:switch-to-slave-pseudo-terminal #:start-new-session
 	   #:preparation-before-grant-listen-privileged-ports	   
 	   #:set-grant-listen-privileged-ports #:linux-change-user
-	   #:exit #:fork-this-process #:create-pid-file #:read-pid-file
-	   #:*fn-log-info* #:*fn-log-err*
-	   ))
+	   #:exit #:fork-this-process #:create-pid-file #:read-pid-file))	   
 
 (in-package :daemon-utils-linux-port)
 

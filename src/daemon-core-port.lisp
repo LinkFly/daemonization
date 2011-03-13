@@ -10,9 +10,7 @@
 	   #:zap-service
 	   #:kill-service
 	   #:start-service
-	   #:simple-start
-	   #:*fn-log-info* 
-	   #:*fn-log-err*))
+	   #:simple-start))
 
 (in-package :daemon-core-port)
 

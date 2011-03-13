@@ -6,9 +6,7 @@
 	#+linux
 	:daemon-utils-linux-port)
   (:export #:restrict-rights
-	   #:isolate-process
-	   #:*fn-log-info*
-	   #:*fn-log-err*))
+	   #:isolate-process))	   
 
 (in-package :daemon-utils-port)
 

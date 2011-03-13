@@ -3,7 +3,8 @@
   (:export #:log-info #:log-err #:defun-ext #:wrap-log
 	   #:*print-log-info* #:*print-log-err*
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
-	   #:*print-call #:*print-called-form-with-result*))
+	   #:*print-call #:*print-called-form-with-result*
+	   #:*fn-log-info #:*fn-log-err*))
 
 (in-package :daemon-logging)
 
@@ -40,7 +41,7 @@
   (let ((sym (when *def-in-package* (find-symbol fn-log-str *def-in-package*))))
     (if (and sym (boundp sym))
 	(symbol-value sym)
-	(symbol-value (find-symbol fn-log-str *package*)))))
+	(symbol-value (find-symbol fn-log-str (load-time-value *package*))))))
 
 (defun get-fn-log-info ()
   (get-log-fn (symbol-name '*FN-LOG-INFO*)))
