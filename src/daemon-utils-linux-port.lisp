@@ -1,7 +1,9 @@
 (defpackage :daemon-utils-linux-port
   (:use :cl :daemon-logging :daemon-unix-api)
   (:shadowing-import-from :daemon-unix-api #:open #:close)
-  (:import-from :daemon-sys-linux-port #:*fn-log-info* #:*fn-log-err* #:enable-interrupt)		
+  (:import-from :daemon-sys-linux-port 
+		;#:*fn-log-info* #:*fn-log-err*
+		#:enable-interrupt)		
   (:export #:set-current-dir #:set-umask
 	   #:detach-from-tty #:switch-to-slave-pseudo-terminal #:start-new-session
 	   #:preparation-before-grant-listen-privileged-ports	   
