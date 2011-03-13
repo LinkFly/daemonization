@@ -86,5 +86,5 @@
   ) ;feature :daemon.as-daemon
 
 (defun-ext start-as-no-daemon (fn)
-  (funcall fn))
+  (when fn (funcall fn)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
