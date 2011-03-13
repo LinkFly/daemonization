@@ -84,8 +84,7 @@
       (prctl option arg)
       (cap-from-text text)
       (cap-set-proc cap_p)
-      (cap-free cap_p)
-      (enable-interrupt signal handler)
+      (cap-free cap_p)      
       
       (passwd-uid object)
       ex-ok

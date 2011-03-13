@@ -1,7 +1,7 @@
 (defpackage :daemon-core-linux-port
   (:use :cl :daemon-logging :daemon-features :daemon-unix-api :daemon-utils-linux-port)
   (:shadowing-import-from :daemon-unix-api #:open #:close)
-  (:import-from :daemon-sys-linux-port #:*fn-log-info* #:*fn-log-err*)
+  (:import-from :daemon-sys-linux-port #:*fn-log-info* #:*fn-log-err* #:enable-interrupt)
   (:export #:get-daemon-command
 	   #:check-daemon-command
 	   #:zap-daemon

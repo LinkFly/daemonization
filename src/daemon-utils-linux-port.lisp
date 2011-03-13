@@ -1,7 +1,7 @@
 (defpackage :daemon-utils-linux-port
   (:use :cl :daemon-logging :daemon-unix-api)
   (:shadowing-import-from :daemon-unix-api #:open #:close)
-  (:import-from :daemon-sys-linux-port #:*fn-log-info* #:*fn-log-err*)		
+  (:import-from :daemon-sys-linux-port #:*fn-log-info* #:*fn-log-err* #:enable-interrupt)		
   (:export #:set-current-dir #:set-umask
 	   #:detach-from-tty #:switch-to-slave-pseudo-terminal #:start-new-session
 	   #:preparation-before-grant-listen-privileged-ports	   
@@ -26,8 +26,8 @@
 ;(macroexpand-1 '(add-logging :daemon-sys-linux-port (open ioctl)))
 |#
 
-(defmacro wrap-log (&body body)
-  `(progn ,@body))
+;(defmacro wrap-log (&body body)
+;  `(progn ,@body))
 	       
 #|(add-logging :daemon-sys-linux-port
 	     (open
@@ -75,43 +75,42 @@
 (progn
   (defun-ext detach-from-tty ()
     (log-info "try open /dev/tty ...")
-    (let ((fd (ignore-errors (wrap-log (open #P"/dev/tty" O-RDWR)))))
+    (let ((fd (ignore-errors (open #P"/dev/tty" O-RDWR))))
       (log-info "/dev/tty file descriptor: ~S" fd)
       (when fd 
 	(log-info "try dettach from tty ..." fd)
-	(let ((res (wrap-log (ioctl fd tiocnotty))))
+	(let ((res (ioctl fd tiocnotty)))
 	  (log-info (if (> res 0) 
 			"=> success."
 			"=> no success.")))
-	(wrap-log (close fd)))))
+	(close fd))))
 
   (defun-ext switch-to-slave-pseudo-terminal (&optional (out #P"/dev/null") (err #P"/dev/null"))
     (flet ((c-bit-or (&rest args)
 	     (reduce #'(lambda (x y) (boole boole-ior x y))
 		     args)))      
       (log-info "try open /dev/ptmx ...") 
-      (let* ((fdm (wrap-log (open #P"/dev/ptmx" O-RDWR))) 
+      (let* ((fdm (open #P"/dev/ptmx" O-RDWR))
 	     (slavename (progn 
 			  (log-info "~S: /dev/ptmx file descriptor" fdm)
-			  (wrap-log 
 			   (grantpt fdm)
 			   (unlockpt fdm)
-			   (ptsname fdm))))
-	     (fds (wrap-log (open slavename O-RDONLY)))
-	     (out-fd (wrap-log (open out 
-				     (c-bit-or O-WRONLY O-CREAT O-TRUNC)
-				     (c-bit-or S-IREAD S-IWRITE S-IROTH))))
+			   (ptsname fdm)))
+	     (fds (open slavename O-RDONLY))
+	     (out-fd (open out 
+			   (c-bit-or O-WRONLY O-CREAT O-TRUNC)
+			   (c-bit-or S-IREAD S-IWRITE S-IROTH)))
 	     (err-fd (if (not (equal err out))
-			 (wrap-log (open err 
-					 (c-bit-or O-WRONLY O-CREAT O-TRUNC)
-					 (c-bit-or S-IREAD S-IWRITE S-IROTH)))
+			 (open err 
+			       (c-bit-or O-WRONLY O-CREAT O-TRUNC)
+			       (c-bit-or S-IREAD S-IWRITE S-IROTH))
 			 (if out (wrap-log (dup out-fd))))))
-	(wrap-log (dup2 fds 0))
-	(wrap-log (dup2 out-fd 1))
-	(wrap-log (dup2 err-fd 2)))))
+	(dup2 fds 0)
+	(dup2 out-fd 1)
+	(dup2 err-fd 2))))
 
   (defun-ext start-new-session ()
-    (wrap-log (setsid)))
+    (setsid))
 
   (defun-ext read-pid-file (pid-file)
     (with-open-file (s pid-file)
@@ -129,23 +128,23 @@
 (defun-ext linux-change-user (name &optional group)
   (let* ((passwd (wrap-log (getpwnam name)))
 	 (gid (if group
-		  (wrap-log (group-gid (wrap-log (getgrnam group))))
-		  (wrap-log (passwd-gid passwd))))
-	 (uid (wrap-log (passwd-uid passwd))))
-    (wrap-log (setresgid gid gid gid))
-    (wrap-log (initgroups name gid))
-    (wrap-log (setresuid uid uid uid))))	;feature :daemon.change-user
+		  (group-gid (wrap-log (getgrnam group)))
+		  (passwd-gid passwd)))
+	 (uid (passwd-uid passwd)))
+    (setresgid gid gid gid)
+    (initgroups name gid)
+    (setresuid uid uid uid)))	;feature :daemon.change-user
 ;;;;;;;;
 
 #+daemon.listen-privileged-ports
 (progn 
   (defun-ext preparation-before-grant-listen-privileged-ports ()
-    (wrap-log (prctl +PR_SET_KEEPCAPS+ 1)))
+    (prctl +PR_SET_KEEPCAPS+ 1))
 
   (defun-ext set-grant-listen-privileged-ports ()
-    (let ((cap_p (wrap-log (cap-from-text "CAP_NET_BIND_SERVICE=ep"))))
-      (wrap-log (cap-set-proc cap_p))
-      (wrap-log (cap-free cap_p))))
+    (let ((cap_p (cap-from-text "CAP_NET_BIND_SERVICE=ep")))
+      (cap-set-proc cap_p)
+      (cap-free cap_p)))
 
   ) ;feature :daemon.listen-privileged-ports
 
@@ -167,17 +166,17 @@
 	       ,parent-form-before-fork)
 
      (log-info "fork proceed ...")
-     (unless (= (wrap-log (fork)) 0)
+     (unless (= (fork) 0)
        (loop
 	  while (null (get-status))
-	  do (daemon-logging::wrap-log-form (sleep 0.1)))
-       (wrap-log (exit (if (= (get-status) sigusr1)
+	  do (sleep 0.1))
+       (exit (if (= (get-status) sigusr1)
 			   ex-ok
-			   ex-software))))
+			   ex-software)))
 
      (wrap-log ,child-form-after-fork 
 	       (enable-interrupt sigusr1 :default)
 	       (enable-interrupt sigchld :default)
-	       ,child-form-before-send-success
-	       (kill (wrap-log (getppid)) sigusr1)
-	       ,main-child-form)))
+	       ,child-form-before-send-success)
+     (kill (getppid) sigusr1)
+     (wrap-log ,main-child-form)))
