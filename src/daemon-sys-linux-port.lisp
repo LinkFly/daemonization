@@ -1,19 +1,23 @@
+(require :sb-posix)
 (defpackage :daemon-sys-linux-port
   (:use :cl 	
 	:daemon-logging
 	#+sbcl :sb-alien
-        #+sbcl :sb-unix)
+        #+sbcl :sb-unix)  
   #+sbcl
   (:import-from :sb-posix
 		#:getpwnam #:getgrnam #:group-gid #:passwd-gid #:passwd-uid
-		#:setresgid #:setresuid #:fork #:kill #:getpid #:getppid
+		#:setresgid #:setresuid 					
+		#:kill #:getpid #:getppid
 		#:chdir #:getcwd #:umask #:setsid #:dup #:dup2)
   #+sbcl
   (:shadowing-import-from :sb-posix
-			  #:sigusr1 #:sigchld #:sigkill #:open 
+			  #:sigusr1 #:sigchld #:sigkill
 			  #:O-RDWR #:O-RDONLY #:O-WRONLY #:O-CREAT #:O-TRUNC 
 			  #:S-IREAD #:S-IWRITE #:S-IROTH
 			  #:ioctl #:close #:syslog #:log-err #:log-info)
+  ;;fork and open defined follow with using sb-posix:fork and sb-posix:open
+  (:shadow #:open #:fork)
   #+sbcl
   (:import-from :sb-sys #:enable-interrupt)
 
@@ -34,6 +38,34 @@
 	   ))
 
 (in-package :daemon-sys-linux-port)
+
+;;;;;;;;;;;;;;;;;;;;;; Logging ;;;;;;;;;;;;;;;;;;;;;;
+
+;;; Correct log-info and log-err (function from :daemon-logging)
+(eval-when (:compile-toplevel)
+  (setf (macro-function 'log-info) (macro-function 'daemon-logging:log-info))
+  (setf (macro-function 'log-err) (macro-function 'daemon-logging:log-err)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defparameter daemon-logging:*fn-log-info* #'(lambda (fmt-str &rest args)
+				(syslog log-info (apply #'format nil fmt-str args))))
+(defparameter daemon-logging:*fn-log-err* #'(lambda (fmt-str &rest args)
+				(syslog log-err (concatenate 'string "ERROR: " (apply #'format nil fmt-str args)))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; Correct open (for handling mode-t param equal nil
+(defun open (pathname flags &optional mode)
+  (apply #'sb-posix:open 
+	 pathname
+	 flags 
+	 (if mode (list mode) nil)))
+
+(defun fork ()
+  (let ((fork-res (funcall #'sb-posix:fork)))
+    (log-info "-- here was fork --")
+    (setf *log-prefix* 
+	  (if (= fork-res 0) :child-proc :parent-proc))
+    fork-res))
 
 ;;;;;;;;;;;;;;;;;; Compilation stage ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; For shadowing in daemon-unix-api 
@@ -110,12 +142,6 @@
 	    +for-daemon-unix-functions+))|#
   )
 
-;;; Correct log-info and log-err (function from :daemon-logging)
-(eval-when (:compile-toplevel)
-  (setf (macro-function 'log-info) (macro-function 'daemon-logging:log-info))
-  (setf (macro-function 'log-err) (macro-function 'daemon-logging:log-err)))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 ;; For definition cap-from-text, cap-set-proc and cap-free
 #+(and sbcl daemon.listen-privileged-ports)
 (eval-when (:compile-toplevel :load-toplevel)
@@ -126,13 +152,7 @@
 (defconstant ex-ok 0)
 (defconstant ex-software 70)
 
-;;; Logging
-(defparameter daemon-logging:*fn-log-info #'(lambda (fmt-str &rest args)
-				(syslog log-info (princ (apply #'format nil fmt-str args)))))
-(defparameter daemon-logging:*fn-log-err* #'(lambda (fmt-str &rest args)
-				(syslog log-err (princ (concatenate 'string "ERR: " (apply #'format nil fmt-str args))))))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;;;;;;;;;;
 (defun exit (&optional (status ex-ok))
   #-sbcl (error "Not implemented on not sbcl lisps")
   #+sbcl (quit :unix-status status))
@@ -143,7 +163,7 @@
   (setq fn-str-name (string-upcase 
 		     (substitute #\- #\_ name)))
   `(progn 
-     (log-info "try defining ~S ..." ,name)       
+     (log-info "try defining ~A ..." ,name)       
      (sb-posix::define-call ,name ,@args)
      (let ((fn-sym (find-symbol (string-upcase ,fn-str-name) :sb-posix))
 	   (fn-using-sym (read-from-string ,fn-str-name)))

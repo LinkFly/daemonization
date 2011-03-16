@@ -4,7 +4,7 @@
 	   #:*print-log-info* #:*print-log-err*
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
 	   #:*print-call #:*print-called-form-with-result*
-	   #:*fn-log-info #:*fn-log-err*))
+	   #:*fn-log-info* #:*fn-log-err* #:*log-prefix*))
 
 (in-package :daemon-logging)
 
@@ -16,9 +16,10 @@
 (defparameter *print-log-layer* t)
 (defparameter *print-internal-call* t)
 (defparameter *print-call* t)
-(defparameter *print-called-form-with-result* nil)
+(defparameter *print-called-form-with-result* t)
 (defparameter *disabled-functions-logging* nil)
 (defparameter *disabled-layers-logging* nil)
+(defparameter *log-prefix* nil)
 ;(setf *disabled-layers-logging* '(:daemon-core-linux-port :daemon-unix-api))
 ;(setf *disabled-functions-logging* '(daemon-core-linux-port:start-as-no-daemon))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -62,6 +63,7 @@
 ;;; Checking
 ;(get-log-layer)
 ;(log-info "test")
+;(log-info "test: ~S")
 ;(syslog-info "test")
 ;(defun-ext f (x y) (log-info "this f") (+ x (g y)))
 ;(defun-ext g (x) (log-info "this g") (* x x))
@@ -70,9 +72,12 @@
 
 (defun wrap-fmt-str (fmt-str)
   (format nil
-	  "~%(:DAEMONIZATION~25A ~A~A)"
+	  "~%(:DAEMONIZATION~26A~A ~A~A)"
 	  (if *print-log-layer* 
 	      (format nil " ~A" (get-log-layer))
+	      "")
+	  (if *log-prefix* 
+	      (format nil " ~A" *log-prefix*)
 	      "")
 	  (get-indent)
 	  fmt-str))
@@ -109,7 +114,7 @@
   (syslog-info ":RESULT ~A ~A"
 	       result 
 	       (if form 
-		   (format nil ":CALLED-FORM ~A)" (as-string form))
+		   (format nil ":CALLED-FORM ~A" (as-string form))
 		   "")))
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -235,18 +240,22 @@
 	       :key #'princ-to-string)))
 
 (defmacro wrap-log-form (form)
-  (with-gensyms (form-str res fn) ;args this-name)
+  (with-gensyms (form-str res fn args)
     `(if (not *print-internal-call*)
 	 ,form
 	 (let* ((*def-in-package* (load-time-value *package*))
 		(*log-indent* *log-indent*)
 		(,fn ',(first form))
-;		(,args ,(cons 'list (rest form)))
-;		(,form-str (present-form (cons ,fn ,args))))
-		(,form-str (present-form ',form)))
+		(,args (unless (or (special-operator-p ,fn) (macro-function ,fn)) ,(cons 'list (rest form))))
+		(,form-str (present-form 
+			    (if (or (special-operator-p ,fn) (macro-function ,fn))
+			        ',form 
+				(cons ,fn ,args)))))
 	   (when (is-logging-p ,fn *def-in-package*)
 	     (syslog-call-info ,form-str))
-	   (let ((,res ,form))
+	   (let ((,res (if (or (special-operator-p ,fn) (macro-function ,fn))
+			   ,form
+			   (apply ,fn ,args))))
 	     (when (is-logging-p ,fn *def-in-package*)
 	       (syslog-call-out (present-form ,res) (when *print-called-form-with-result* ,form-str)))
 	     ,res)))))

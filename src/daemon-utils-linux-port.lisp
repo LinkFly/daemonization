@@ -80,9 +80,9 @@
       (when fd 
 	(log-info "try dettach from tty ..." fd)
 	(let ((res (ioctl fd tiocnotty)))
-	  (log-info (if (> res 0) 
+	  (log-info (if (>= res 0) 
 			"=> success."
-			"=> no success.")))
+			"=> no success.")))	
 	(close fd))))
 
   (defun-ext switch-to-slave-pseudo-terminal (&optional (out #P"/dev/null") (err #P"/dev/null"))
@@ -92,10 +92,10 @@
       (log-info "try open /dev/ptmx ...") 
       (let* ((fdm (open #P"/dev/ptmx" O-RDWR))
 	     (slavename (progn 
-			  (log-info "~S: /dev/ptmx file descriptor" fdm)
-			   (grantpt fdm)
-			   (unlockpt fdm)
-			   (ptsname fdm)))
+			  (log-info "/dev/ptmx file descriptor: ~A" fdm)
+			  (grantpt fdm)
+			  (unlockpt fdm)
+			  (ptsname fdm)))
 	     (fds (open slavename O-RDONLY))
 	     (out-fd (open out 
 			   (c-bit-or O-WRONLY O-CREAT O-TRUNC)
@@ -104,10 +104,11 @@
 			 (open err 
 			       (c-bit-or O-WRONLY O-CREAT O-TRUNC)
 			       (c-bit-or S-IREAD S-IWRITE S-IROTH))
-			 (if out (wrap-log (dup out-fd))))))
+			 (if out (dup out-fd)))))
 	(dup2 fds 0)
 	(dup2 out-fd 1)
 	(dup2 err-fd 2))))
+	
 
   (defun-ext start-new-session ()
     (setsid))
@@ -116,7 +117,7 @@
     (with-open-file (s pid-file)
       (read s)))
 
-  (defun-ext create-pid-file (pid-file)
+  (defun-ext create-pid-file (pid-file)    
     (with-open-file (out pid-file
 			 :direction :output
 			 :if-exists :error
@@ -155,6 +156,7 @@
 			     child-form-before-send-success
 			     main-child-form)
   `(progn
+     (log-info "preparing before fork this process ...")
      (let (status)
        (defun-ext get-status () status)
        (defun-ext signal-handler (sig info context)
@@ -164,8 +166,8 @@
      (wrap-log (enable-interrupt sigusr1 #'signal-handler)
 	       (enable-interrupt sigchld #'signal-handler)
 	       ,parent-form-before-fork)
-
-     (log-info "fork proceed ...")
+     
+     (log-info " ... OK(preparing before fork).")
      (unless (= (fork) 0)
        (loop
 	  while (null (get-status))
@@ -174,9 +176,13 @@
 			   ex-ok
 			   ex-software)))
 
-     (wrap-log ,child-form-after-fork 
-	       (enable-interrupt sigusr1 :default)
-	       (enable-interrupt sigchld :default)
-	       ,child-form-before-send-success)
+     (wrap-log 
+       ,child-form-after-fork 
+       (enable-interrupt sigusr1 :default)
+       (enable-interrupt sigchld :default)
+       )
+       ,child-form-before-send-success
+       ;) 
+	       
      (kill (getppid) sigusr1)
      (wrap-log ,main-child-form)))

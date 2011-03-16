@@ -35,7 +35,7 @@
 
 
 #+daemon.as-daemon
-(defun-ext isolate-process ()
+(defun-ext isolate-process ()  
     #-linux (error "ISOLATE-PROCESS not implemented on not Linux")
     #+linux
     (progn 

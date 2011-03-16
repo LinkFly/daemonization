@@ -72,17 +72,17 @@
     (kill (read-pid-file pid-file) sigkill)
     (delete-file pid-file)
     (exit ex-ok))
-
+ 
 (defun-ext start-daemon (name pid-file &key configure-rights-fn preparation-fn main-fn)
   (fork-this-process
      :parent-form-before-fork (when configure-rights-fn (funcall configure-rights-fn))
      :child-form-after-fork (set-global-error-handler)
      :child-form-before-send-success (progn 
-				       (set-current-dir #P"/")
-				       (set-umask 0)
-				       (when preparation-fn (funcall preparation-fn))
-				       (enable-handling-stop-command name)
-				       (create-pid-file pid-file))
+					(set-current-dir #P"/")					
+					(set-umask 0)
+					(when preparation-fn (funcall preparation-fn))
+					(enable-handling-stop-command name)					
+					(when pid-file (create-pid-file pid-file)))
      :main-child-form (when main-fn (funcall main-fn))))
 
   ) ;feature :daemon.as-daemon

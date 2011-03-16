@@ -42,7 +42,7 @@
 					;  (setq as-daemon-p (not (string= *daemon-command* "nodaemon")))
   (check-daemon-command daemon-command)
   (let ((clean-params (list :pid-file pid-file))
-	(start-params (list :name name :user user :group group :main-function main-function)))
+	(start-params (list :pid-file pid-file :name name :user user :group group :main-function main-function)))
     (case-command daemon-command
 		  ("zap" (zap-service clean-params))
 		  ("stop" (stop-service clean-params))
