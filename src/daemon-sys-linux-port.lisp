@@ -48,9 +48,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defparameter daemon-logging:*fn-log-info* #'(lambda (fmt-str &rest args)
-				(syslog log-info (apply #'format nil fmt-str args))))
+				(syslog log-info (add-daemon-log (apply #'format nil fmt-str args)))))
 (defparameter daemon-logging:*fn-log-err* #'(lambda (fmt-str &rest args)
-				(syslog log-err (concatenate 'string "ERROR: " (apply #'format nil fmt-str args)))))
+				(syslog log-err (add-daemon-log (concatenate 'string "ERROR: " (apply #'format nil fmt-str args))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Correct open (for handling mode-t param equal nil

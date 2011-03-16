@@ -4,7 +4,8 @@
 	   #:*print-log-info* #:*print-log-err*
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
 	   #:*print-call #:*print-called-form-with-result*
-	   #:*fn-log-info* #:*fn-log-err* #:*log-prefix*))
+	   #:*fn-log-info* #:*fn-log-err* #:*log-prefix*
+	   #:add-daemon-log #:get-daemon-log-list))
 
 (in-package :daemon-logging)
 
@@ -20,8 +21,6 @@
 (defparameter *disabled-functions-logging* nil)
 (defparameter *disabled-layers-logging* nil)
 (defparameter *log-prefix* nil)
-;(setf *disabled-layers-logging* '(:daemon-core-linux-port :daemon-unix-api))
-;(setf *disabled-functions-logging* '(daemon-core-linux-port:start-as-no-daemon))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Logging for actions on differently layers, for using
@@ -35,9 +34,22 @@
 				(apply #'format t fmt-str args)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;; Logging native parameter ;;;;;;;;;;
+;;; For added log strings
+(defparameter *daemon-logs* nil)
+
 ;;; For defun-ext and wrap-fmt-str ;;;;;;;;;;;;;;;;;;
 (defparameter *def-in-package* nil)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun add-daemon-log (log)
+  (push log *daemon-logs*)
+  log)
+
+(defun get-daemon-log-list ()
+  (nth-value 0 (read-from-string (format nil 
+				       "(~A)"
+				       (apply #'concatenate 'string (reverse *daemon-logs*))))))
 
 (defun get-indent ()
   (make-string *log-indent* :initial-element #\Space))
@@ -77,7 +89,7 @@
 	      (format nil " ~A" (get-log-layer))
 	      "")
 	  (if *log-prefix* 
-	      (format nil " ~A" *log-prefix*)
+	      (format nil " :~A" *log-prefix*)
 	      "")
 	  (get-indent)
 	  fmt-str))
