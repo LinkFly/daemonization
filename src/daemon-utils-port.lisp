@@ -39,7 +39,9 @@
     #-linux (error "ISOLATE-PROCESS not implemented on not Linux")
     #+linux
     (progn 
+      (log-info "start isolate process ...")
       (detach-from-tty)
       (switch-to-slave-pseudo-terminal)
-      (start-new-session)))
+      (start-new-session)
+      (log-info "... OK(isolate process).")))
 

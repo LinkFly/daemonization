@@ -177,6 +177,9 @@
 	 finally (return (reverse result)))))
   ;(present-args '("no-daemon"))
   ;(present-args '(x y &optional (v 34) &key r m))    
+
+  (defun is-special-or-macro-p (fn-sym)
+    (or (special-operator-p fn-sym) (macro-function fn-sym)))
   );eval-when 
 
 (defun correct-sym (sym)
@@ -258,16 +261,17 @@
 	 (let* ((*def-in-package* (load-time-value *package*))
 		(*log-indent* *log-indent*)
 		(,fn ',(first form))
-		(,args (unless (or (special-operator-p ,fn) (macro-function ,fn)) ,(cons 'list (rest form))))
+		,@(unless (is-special-or-macro-p (first form))
+			 `((,args (list ,@(rest form)))))
 		(,form-str (present-form 
-			    (if (or (special-operator-p ,fn) (macro-function ,fn))
-			        ',form 
-				(cons ,fn ,args)))))
+			    ,(if (is-special-or-macro-p (first form)) 
+				 `(quote ,form)
+				 `(cons ,fn ,args)))))
 	   (when (is-logging-p ,fn *def-in-package*)
 	     (syslog-call-info ,form-str))
-	   (let ((,res (if (or (special-operator-p ,fn) (macro-function ,fn))
-			   ,form
-			   (apply ,fn ,args))))
+	   (let ((,res ,(if (is-special-or-macro-p (first form))
+			   form
+			   `(apply ,fn ,args))))
 	     (when (is-logging-p ,fn *def-in-package*)
 	       (syslog-call-out (present-form ,res) (when *print-called-form-with-result* ,form-str)))
 	     ,res)))))

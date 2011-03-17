@@ -110,7 +110,7 @@
 	(dup2 err-fd 2))))
 	
 
-  (defun-ext start-new-session ()
+  (defun-ext start-new-session ()    
     (setsid))
 
   (defun-ext read-pid-file (pid-file)
@@ -180,9 +180,7 @@
        ,child-form-after-fork 
        (enable-interrupt sigusr1 :default)
        (enable-interrupt sigchld :default)
-       )
-       ,child-form-before-send-success
-       ;) 
+       ,child-form-before-send-success)
 	       
      (kill (getppid) sigusr1)
      (wrap-log ,main-child-form)))
