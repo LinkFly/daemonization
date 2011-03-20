@@ -37,12 +37,13 @@
 
 ;(wrap-log (member "3" '("1" "2" "3") :test #'string-equal))
 (defun-ext daemonized (daemon-command 
-		   &key main-function name user group pid-file)
+		   &key main-function name user group pid-file before-parent-exit-fn)
 					;		   &aux as-daemon-p)
 					;  (setq as-daemon-p (not (string= *daemon-command* "nodaemon")))
   (check-daemon-command daemon-command)
   (let ((clean-params (list :pid-file pid-file))
-	(start-params (list :pid-file pid-file :name name :user user :group group :main-function main-function)))
+	(start-params (list :pid-file pid-file :before-parent-exit-fn before-parent-exit-fn 
+			    :name name :user user :group group :main-function main-function)))
     (case-command daemon-command
 		  ("zap" (zap-service clean-params))
 		  ("stop" (stop-service clean-params))

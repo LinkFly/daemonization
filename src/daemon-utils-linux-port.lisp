@@ -8,58 +8,10 @@
 	   #:detach-from-tty #:switch-to-slave-pseudo-terminal #:start-new-session
 	   #:preparation-before-grant-listen-privileged-ports	   
 	   #:set-grant-listen-privileged-ports #:linux-change-user
-	   #:exit #:fork-this-process #:create-pid-file #:read-pid-file))	   
+	   #:exit #:fork-this-process #:create-pid-file #:read-pid-file
+	   #:fork-and-parent-exit-on-child-signal))	   
 
 (in-package :daemon-utils-linux-port)
-
-;(mapcar #'(lambda (sym) (unintern (find-symbol sym *package*))) '("EX-SOFTWARE" "EX-OK" "PASSWD-UID" "GETPPID" "SIGUSR1"))
-#|(defmacro add-logging (package fn-sym-list)
-  (loop for fn-sym in fn-sym-list
-     do (shadow fn-sym))
-  `(progn 
-     ,@(loop for fn-sym in fn-sym-list
-	  collect `(progn
-		     (defun-ext ,(find-symbol (symbol-name fn-sym) *package*) (&rest args)
-		       (apply (symbol-function (find-symbol (symbol-name ',fn-sym)
-							    ,package))
-			      args))))))
-;(macroexpand-1 '(add-logging :daemon-sys-linux-port (open ioctl)))
-|#
-
-;(defmacro wrap-log (&body body)
-;  `(progn ,@body))
-	       
-#|(add-logging :daemon-sys-linux-port
-	     (open
-	       ioctl
-	       close
-	       grantpt
-	       unlockpt
-	       ptsname
-	       dup
-	       dup2
-	       setsid
-	       getpwnam
-
-	       fork
-	       sleep
-	       exit
-	       kill
-
-	       ;not posix
-	       group-gid
-	       passwd-gid
-	       setresgid
-	       initgroups
-	       setresuid
-	       prctl
-	       cap-from-text
-	       cap-set-proc
-	       cap-free
-	       enable-interrupt
-
-	       ))
-|#
 
 (defun-ext set-current-dir (path)
   (log-info "changing directory, current directory: ~S ..." path (getcwd))
@@ -88,7 +40,8 @@
   (defun-ext switch-to-slave-pseudo-terminal (&optional (out #P"/dev/null") (err #P"/dev/null"))
     (flet ((c-bit-or (&rest args)
 	     (reduce #'(lambda (x y) (boole boole-ior x y))
-		     args)))      
+		     args)))
+	         
       (log-info "try open /dev/ptmx ...") 
       (let* ((fdm (open #P"/dev/ptmx" O-RDWR))
 	     (slavename (progn 
@@ -105,8 +58,11 @@
 			       (c-bit-or O-WRONLY O-CREAT O-TRUNC)
 			       (c-bit-or S-IREAD S-IWRITE S-IROTH))
 			 (if out (dup out-fd)))))
+	(close 0)
 	(dup2 fds 0)
+	(close 1)
 	(dup2 out-fd 1)
+	(close 2)
 	(dup2 err-fd 2))))
 	
 
@@ -150,8 +106,20 @@
   ) ;feature :daemon.listen-privileged-ports
 
 #+daemon.as-daemon
+(defun fork-and-parent-exit-on-child-signal (&optional fn-before-exit &aux pid)  
+  (unless (= (setf pid (fork)) 0)       
+    (loop 
+       while (null (get-status))
+       do (sleep 0.1))
+    (when fn-before-exit (funcall fn-before-exit pid (get-status)))
+    (exit (if (= (get-status) sigusr1)
+	      ex-ok
+	      ex-software))))
+
+#+daemon.as-daemon
 (defmacro fork-this-process (&key 
 			     parent-form-before-fork
+			     parent-form-before-exit
 			     child-form-after-fork
 			     child-form-before-send-success
 			     main-child-form)
@@ -164,17 +132,23 @@
 	 (setf status sig)))
       
      (wrap-log (enable-interrupt sigusr1 #'signal-handler)
-	       (enable-interrupt sigchld #'signal-handler)
+	       (enable-interrupt sigchld #'(lambda (sig info context)					     
+					     (signal-handler sig info context)
+					     (wait)))
 	       ,parent-form-before-fork)
      
      (log-info " ... OK(preparing before fork).")
-     (unless (= (fork) 0)
-       (loop
+     
+     (fork-and-parent-exit-on-child-signal ,parent-form-before-exit)
+     #|(unless (= (fork) 0)       
+       (loop 
 	  while (null (get-status))
-	  do (sleep 0.1))
+	  do (sleep 0.1))       
+       ;(
        (exit (if (= (get-status) sigusr1)
 			   ex-ok
 			   ex-software)))
+     |#
 
      (wrap-log 
        ,child-form-after-fork 

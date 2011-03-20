@@ -73,9 +73,10 @@
     (delete-file pid-file)
     (exit ex-ok))
  
-(defun-ext start-daemon (name pid-file &key configure-rights-fn preparation-fn main-fn)
+(defun-ext start-daemon (name pid-file &key configure-rights-fn preparation-fn main-fn before-parent-exit-fn)
   (fork-this-process
      :parent-form-before-fork (when configure-rights-fn (funcall configure-rights-fn))
+     :parent-form-before-exit before-parent-exit-fn
      :child-form-after-fork (set-global-error-handler)
      :child-form-before-send-success (progn 
 					(set-current-dir #P"/")					

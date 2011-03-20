@@ -89,7 +89,7 @@
 	      (format nil " ~A" (get-log-layer))
 	      "")
 	  (if *log-prefix* 
-	      (format nil " :~A" *log-prefix*)
+	      (format nil " ~S" *log-prefix*)
 	      "")
 	  (get-indent)
 	  fmt-str))

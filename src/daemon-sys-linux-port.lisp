@@ -9,7 +9,8 @@
 		#:getpwnam #:getgrnam #:group-gid #:passwd-gid #:passwd-uid
 		#:setresgid #:setresuid 					
 		#:kill #:getpid #:getppid
-		#:chdir #:getcwd #:umask #:setsid #:dup #:dup2)
+		#:chdir #:getcwd #:umask #:setsid #:dup #:dup2
+		#:wait)
   #+sbcl
   (:shadowing-import-from :sb-posix
 			  #:sigusr1 #:sigchld #:sigkill
@@ -35,6 +36,7 @@
 	   #:dup #:dup2
 	   #:tiocnotty #:syslog
 	   #:get-unix-functions #:get-unix-fn-syms #:get-unix-constants
+	   #:wait
 	   ))
 
 (in-package :daemon-sys-linux-port)
@@ -64,7 +66,7 @@
   (let ((fork-res (funcall #'sb-posix:fork)))
     (log-info "-- here was fork --")
     (setf *log-prefix* 
-	  (if (= fork-res 0) :child-proc :parent-proc))
+	  (if (= fork-res 0) (list :child-proc (getpid)) (list :parent-proc (getpid))))
     fork-res))
 
 ;;;;;;;;;;;;;;;;;; Compilation stage ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -86,7 +88,7 @@
       (getpwnam login-name)
 
       (fork)      
-      (exit &optional (status daemon-sys-linux-port:ex-ok))
+      (exit &optional (status ex-ok))
       (kill pid signal)
 
       (getcwd)
@@ -95,6 +97,8 @@
       (getpid)
       (getgrnam login-name) 
       (getppid)
+
+      (wait &optional statusptr)
 
       o-rdwr
       o-rdonly
@@ -184,7 +188,6 @@
 (progn 
   (defconstant +PR_SET_KEEPCAPS+ 8)
   (def-alien-call "prctl" int minusp (option int) (arg int))
-
   #-sbcl
   (error "Not implemented load libcap library (with cap_xx functions) for not sbcl lisps")
   #+sbcl 

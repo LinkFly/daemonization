@@ -41,6 +41,7 @@
     (start-daemon
      (getf params :name)
      (getf params :pid-file)
+     :before-parent-exit-fn (getf params :before-parent-exit-fn)
      :configure-rights-fn #'(lambda () 
 			      (restrict-rights :new-user (getf params :user) 
 					       :new-group (getf params :group)))
