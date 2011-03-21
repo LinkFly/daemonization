@@ -1,6 +1,7 @@
 (push #P"/media/WORK_PARTITION/work_dir/web-projects/dynserv/asdf-systems/daemonization/" asdf:*central-registry*)
 (push #P"/media/WORK_PARTITION/work_dir/web-projects/dynserv/asdf-systems/restart-process/" asdf:*central-registry*)
 
+(asdf:load-system :daemonization)
 (asdf:load-system :restart-process)
 (asdf:load-system :sb-posix)
 (daemonization:daemonized "start" 
