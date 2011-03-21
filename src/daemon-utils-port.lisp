@@ -6,7 +6,8 @@
 	#+linux
 	:daemon-utils-linux-port)
   (:export #:restrict-rights
-	   #:isolate-process))	   
+	   #:isolate-process
+	   #:exit))	   
 
 (in-package :daemon-utils-port)
 

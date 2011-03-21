@@ -8,12 +8,13 @@
 
 (defsystem :daemonization
   :version "0.0.1"
-  :depends-on ()
+  :depends-on (#+sbcl :sb-posix #-sbcl (error "Not implemented on not sbcl lisps"))
   :components ((:module "src"
-			:components ((:file "daemon-logging")
+			:components ((:file "share")
+				     (:file "daemon-logging")
 				     (:file "daemon-features")
 				     #+linux 
-				     (:file "daemon-sys-linux-port" :depends-on ("daemon-logging" "daemon-features"))
+				     (:file "daemon-sys-linux-port" :depends-on ("share" "daemon-logging" "daemon-features"))
 				     #+linux 
 				     (:file "daemon-unix-api" :depends-on ("daemon-logging" "daemon-sys-linux-port"))
 				     #+linux 
@@ -37,6 +38,4 @@
 									     #+linux "daemon-core-linux-port"
 									     #-linux (error "Not implemented on not Linux")
 									     ))
-				     (:file "daemonization" :depends-on ("daemon-logging" "daemon-core-port"))))))
-				     
-			
+				     (:file "daemonization" :depends-on ("share" "daemon-logging" "daemon-core-port" "daemon-utils-port"))))))

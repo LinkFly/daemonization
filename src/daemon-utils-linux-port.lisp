@@ -154,7 +154,8 @@
        ,child-form-after-fork 
        (enable-interrupt sigusr1 :default)
        (enable-interrupt sigchld :default)
-       ,child-form-before-send-success)
-	       
+       ,child-form-before-send-success)	       
      (kill (getppid) sigusr1)
      (wrap-log ,main-child-form)))
+
+     

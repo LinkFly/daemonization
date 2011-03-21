@@ -1,7 +1,7 @@
 (defpackage :daemonization 
-  (:use :cl :daemon-logging :daemon-core-port)
+  (:use :cl :share :daemon-logging :daemon-core-port)
+  (:import-from :daemon-utils-port #:exit)
   (:export #:daemonized))
- 
 
 (in-package :daemonization)
 
@@ -15,12 +15,7 @@
 ;(defun f (x &key y) (+ x y))
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-(defmacro define-constant (name value &optional doc)
-  `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
-     ,@(when doc (list doc))))
-
-(define-constant +all-daemon-commands+ '("start" "stop" "zap" "kill" "restart" "nodaemon")) 
+(define-constant +all-daemon-commands+ '("start" "stop" "zap" "kill" "restart" "nodaemon"))
 
 (defun-ext check-daemon-command (cmd)
   (log-info "Check daemon command ...")
@@ -35,13 +30,13 @@
 	  collect `((string-equal ,cmd ,(first clause))
 		    ,@(rest clause)))))
 
-;(wrap-log (member "3" '("1" "2" "3") :test #'string-equal))
 (defun-ext daemonized (daemon-command 
-		   &key main-function name user group pid-file before-parent-exit-fn)
+		   &key main-function name user group pid-file before-parent-exit-fn exit)
 					;		   &aux as-daemon-p)
 					;  (setq as-daemon-p (not (string= *daemon-command* "nodaemon")))
   (check-daemon-command daemon-command)
-  (let ((clean-params (list :pid-file pid-file))
+  (let ((*process-type* :parent)
+	(clean-params (list :pid-file pid-file))
 	(start-params (list :pid-file pid-file :before-parent-exit-fn before-parent-exit-fn 
 			    :name name :user user :group group :main-function main-function)))
     (case-command daemon-command
@@ -51,7 +46,9 @@
 		  ("restart" (stop-service clean-params)
 			     (start-service start-params))
 		  ("start" (start-service start-params))		   
-		  ("nodaemon" (simple-start start-params)))))
+		  ("nodaemon" (simple-start start-params)))
+    (when (and exit (eq :parent *process-type*))
+      (exit))))
 
 
 #|

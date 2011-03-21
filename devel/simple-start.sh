@@ -1,0 +1,1 @@
+./run-min-lisp.sh --load simple-start.lisp start

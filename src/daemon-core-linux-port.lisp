@@ -45,20 +45,14 @@
     #-sbcl (error "Not implemented on not sbcl lisps")
     #+sbcl 
     (enable-interrupt sigusr1
-		      #'(lambda ()
-			  (handler-case 
-			      (progn 
-				(log-info "Stop ~A daemon" daemon-name)
-				(error "~A stop" daemon-name))
-			    (error (err)
-			      (log-err (with-output-to-string (out)
-					      (let ((*print-escape* nil))
-						(print-object err out))))))
-			    (exit ex-ok))))
+		      #'(lambda (sig info context)
+			  (declare (ignore sig info context))
+			  (progn 
+			    (log-info "Stop ~A daemon" (or daemon-name ""))
+			    (exit ex-ok)))))
 
   (defun-ext zap-daemon (pid-file)
-    (delete-file pid-file)
-    (exit ex-ok))
+    (delete-file pid-file))
 
   (defun-ext stop-daemon (pid-file)
     (let ((pid (read-pid-file pid-file)))
@@ -66,12 +60,11 @@
       (loop
 	 while (ignore-errors (kill pid 0))
 	 do (sleep 0.1))
-      (exit ex-ok)))
+      (delete-file pid-file)))
 
   (defun-ext kill-daemon (pid-file)
     (kill (read-pid-file pid-file) sigkill)
-    (delete-file pid-file)
-    (exit ex-ok))
+    (delete-file pid-file))
  
 (defun-ext start-daemon (name pid-file &key configure-rights-fn preparation-fn main-fn before-parent-exit-fn)
   (fork-this-process
@@ -85,6 +78,7 @@
 					(enable-handling-stop-command name)					
 					(when pid-file (create-pid-file pid-file)))
      :main-child-form (when main-fn (funcall main-fn))))
+;     :main-child-form (progn (log-info "calling main-fn ...")))) ;(log-info (with-output-to-string (*standard-output*) (princ 'main-fn))))))
 
   ) ;feature :daemon.as-daemon
 

@@ -1,5 +1,6 @@
 (defpackage :daemon-sys-linux-port
   (:use :cl 	
+	:share
 	:daemon-logging
 	#+sbcl :sb-alien
         #+sbcl :sb-unix)  
@@ -62,17 +63,15 @@
 	 (if mode (list mode) nil)))
 
 (defun fork ()
-  (let ((fork-res (funcall #'sb-posix:fork)))
-    (log-info "-- here was fork --")
+  (let ((fork-res (funcall #'sb-posix:fork)))    
     (setf *log-prefix* 
 	  (if (= fork-res 0) (list :child-proc (getpid)) (list :parent-proc (getpid))))
+    (setf *process-type* :child)
+    (log-info "-- here was fork --")
     fork-res))
 
 ;;;;;;;;;;;;;;;;;; Compilation stage ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; For shadowing in daemon-unix-api 
-(defmacro define-constant (name value &optional doc)
-  `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
-     ,@(when doc (list doc))))
 
 (define-constant +for-daemon-unix-functions+
     '((open pathname flags &optional mode)

@@ -189,22 +189,9 @@
 		"~A"
 		"~S")
 	    sym))
-  ;(correct-sym 'daemonization::define-constant)
-  #|(let ((*def-in-package* (find-package :daemonization)))
-      (correct-sym 'daemonization::define-constant))
-  |#
 
 (defun present-function (function)  
   (third (multiple-value-list (function-lambda-expression function))))
-
-
-#|(defun represent-functions (fn-list)
-  (mapcar #'(lambda (sexp)
-	      (if (typep sexp 'function)
-		  (present-function sexp)
-		  sexp))
-	  fn-list))
-|#
 
 (defun object-is-not-printable-p (obj)
   (handler-case (let ((*print-readably* t)) 
@@ -231,21 +218,6 @@
 		   "|~S|"
 		   "~S")
 	       form))))
-
-#|
-  (present-form '(daemonization::define-constant f (x) (* x x)));
-  (let ((*def-in-package* (find-package :daemonization)))
-     (present-form '(daemonization::define-constant f (x) (* x x))))
-  (present-form '(f))
-  (present-form nil)
-|#
-
-#|(let* ((fst (correct-sym (first form)))
-	       (res-str (format nil "(~A ~{~S ~}" fst (rest form))))
-	  (concatenate 'string
-		       (subseq res-str 0 (1- (length res-str)))
-		       ")"))
-|#
 
 (defun is-logging-p (fn-sym package)
   (not (member fn-sym *disabled-functions-logging*))
