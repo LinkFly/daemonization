@@ -1,4 +1,3 @@
-(require :sb-posix)
 (defpackage :daemon-sys-linux-port
   (:use :cl 	
 	:daemon-logging
