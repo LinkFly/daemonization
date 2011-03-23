@@ -117,45 +117,45 @@
 	      ex-software))))
 
 #+daemon.as-daemon
-(defmacro fork-this-process (&key 
+(defun fork-this-process (&key 
 			     parent-form-before-fork
 			     parent-form-before-exit
 			     child-form-after-fork
 			     child-form-before-send-success
 			     main-child-form)
-  `(progn
-     (log-info "preparing before fork this process ...")
-     (let (status)
-       (defun-ext get-status () status)
-       (defun-ext signal-handler (sig info context)
-	 (declare (ignore info context))
-	 (setf status sig)))
+  (progn
+    (log-info "preparing before fork this process ...")
+    (let (status)
+      (defun-ext get-status () status)
+      (defun-ext signal-handler (sig info context)
+	(declare (ignore info context))
+	(setf status sig)))
       
-     (wrap-log (enable-interrupt sigusr1 #'signal-handler)
-	       (enable-interrupt sigchld #'(lambda (sig info context)					     
-					     (signal-handler sig info context)
-					     (wait)))
-	       ,parent-form-before-fork)
+    (wrap-log (enable-interrupt sigusr1 #'signal-handler)
+	      (enable-interrupt sigchld #'(lambda (sig info context)					     
+					    (signal-handler sig info context)
+					    (wait)))
+	      (when parent-form-before-fork (funcall parent-form-before-fork)))
      
-     (log-info " ... OK(preparing before fork).")
+    (log-info " ... OK(preparing before fork).")
      
-     (fork-and-parent-exit-on-child-signal ,parent-form-before-exit)
-     #|(unless (= (fork) 0)       
-       (loop 
-	  while (null (get-status))
-	  do (sleep 0.1))       
-       ;(
-       (exit (if (= (get-status) sigusr1)
-			   ex-ok
-			   ex-software)))
+    (fork-and-parent-exit-on-child-signal parent-form-before-exit)
+    #|(unless (= (fork) 0)       
+    (loop 
+    while (null (get-status))
+    do (sleep 0.1))       
+       ;(				;
+    (exit (if (= (get-status) sigusr1)
+    ex-ok
+    ex-software)))
      |#
 
      (wrap-log 
-       ,child-form-after-fork 
+       (when child-form-after-fork (funcall child-form-after-fork))
        (enable-interrupt sigusr1 :default)
        (enable-interrupt sigchld :default)
-       ,child-form-before-send-success)	       
+       (when child-form-before-send-success (funcall child-form-before-send-success)))
      (kill (getppid) sigusr1)
-     (wrap-log ,main-child-form)))
+     (wrap-log (when main-child-form (funcall main-child-form)))))
 
      

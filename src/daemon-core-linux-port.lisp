@@ -68,39 +68,19 @@
  
 (defun-ext start-daemon (name pid-file &key configure-rights-fn preparation-fn main-fn before-parent-exit-fn)
   (fork-this-process
-     :parent-form-before-fork (when configure-rights-fn (funcall configure-rights-fn))
+     :parent-form-before-fork configure-rights-fn
      :parent-form-before-exit before-parent-exit-fn
-     :child-form-after-fork (set-global-error-handler)
-     :child-form-before-send-success (progn 
-					(set-current-dir #P"/")					
-					(set-umask 0)
-					(when preparation-fn (funcall preparation-fn))
-					(enable-handling-stop-command name)					
-					(when pid-file (create-pid-file pid-file)))
-     :main-child-form (when main-fn (funcall main-fn))))
-;     :main-child-form (progn (log-info "calling main-fn ...")))) ;(log-info (with-output-to-string (*standard-output*) (princ 'main-fn))))))
+     :child-form-after-fork #'set-global-error-handler
+     :child-form-before-send-success #'(lambda () 
+					 (progn 
+					   (set-current-dir #P"/")					
+					   (set-umask 0)
+					   (when preparation-fn (funcall preparation-fn))
+					   (enable-handling-stop-command name)					
+					   (when pid-file (create-pid-file pid-file))))
+     :main-child-form main-fn))
 
   ) ;feature :daemon.as-daemon
-
-#|(macroexpand-1 '(fork-this-process
-     :parent-form-before-fork (when configure-rights-fn (funcall configure-rights-fn))
-     :child-form-after-fork (set-global-error-handler)
-     :child-form-before-send-success (progn 
-				       (set-current-dir #P"/")
-				       (set-umask 0)
-				       (when preparation-fn (funcall preparation-fn))
-				       (enable-handling-stop-command name)
-				       (create-pid-file pid-file))
-     :main-child-form (when main-fn (funcall main-fn))))
-(macroexpand-1 '(WRAP-LOG
-     (ENABLE-INTERRUPT SIGUSR1 #'DAEMON-UTILS-LINUX-PORT::SIGNAL-HANDLER)
-     (ENABLE-INTERRUPT SIGCHLD #'DAEMON-UTILS-LINUX-PORT::SIGNAL-HANDLER)
-     (WHEN CONFIGURE-RIGHTS-FN (FUNCALL CONFIGURE-RIGHTS-FN))))
-
-(macroexpand-1 '(DAEMON-LOGGING::WRAP-LOG-FORM
-     (WHEN CONFIGURE-RIGHTS-FN (FUNCALL CONFIGURE-RIGHTS-FN))))
-(macroexpand-1 '(WHEN CONFIGURE-RIGHTS-FN (FUNCALL CONFIGURE-RIGHTS-FN)))
-|# 
 
 (defun-ext start-as-no-daemon (fn)
   (when fn (funcall fn)))
