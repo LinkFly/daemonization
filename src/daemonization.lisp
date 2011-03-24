@@ -1,5 +1,5 @@
 (defpackage :daemonization 
-  (:use :cl :share :daemon-logging :daemon-core-port)
+  (:use :cl :daemon-share :daemon-logging :daemon-core-port)
   (:import-from :daemon-utils-port #:exit)
   (:export #:daemonized))
 
@@ -15,42 +15,104 @@
 ;(defun f (x &key y) (+ x y))
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-constant +all-daemon-commands+ '("start" "stop" "zap" "kill" "restart" "nodaemon"))
-
+(define-constant +all-daemon-commands+ '("start" "stop" "zap" "kill" "restart" "nodaemon" "status"))
+(define-constant +conf-parameters+ '(:main-function :name :user :group :pid-file :before-parent-exit-fn :exit))
+(define-constant 
+    +bad-conf-str-err+
+    (format nil 
+	    "Bad argument conf-params. Configure parameters must be path to file with property list (plist) or self be plist. Plist must be with any keys from ~S. Example: '(:name \"mydaemon\" :user \"username\" :pid-file \"/home/username/tmp/pid\")"
+	    +conf-parameters+))
+(define-constant 
+    +bad-cmd-str-err+ 
+    (format nil "Bad daemon command. Command must be one of the ~S"
+	    +all-daemon-commands+))
+    
 (defun-ext check-daemon-command (cmd)
   (log-info "Check daemon command ...")
   (unless (find cmd +all-daemon-commands+ :test #'string-equal)
-    (error "Bad command-line options"))
+    (log-err +bad-cmd-str-err+)
+    (error +bad-cmd-str-err+))
   (log-info " ... OK.")
   cmd)
 
+(defun-ext check-conf-params (conf-params)
+;(setq conf-params '(:name "mydaemon" :user "lispuser" :pid-file "/home/lispuser/tmp/pid"))
+  (log-info "Check conf-params ...")
+  (unless (and (zerop (mod (length conf-params) 2))
+	       (loop for key in conf-params by #'cddr
+		  if (or (not (keywordp key))
+			 (member key keys)
+			 (not (member key +conf-parameters+)))
+		  do (return)
+		  collect key into keys
+		  finally (return t)))
+      (log-err +bad-conf-str-err+)
+      (error +bad-conf-str-err+))
+  (log-info " ... OK.")
+  conf-params)
+
+(defun-ext analized-and-print-result (result cmd conf-params)
+  (declare (ignorable conf-params))
+  (log-info "here analizing result ...")
+  (let ((analize-str (if (and (= result +pid-file-not-found+)
+			      (not (string-equal "status" cmd)))
+			 (format nil "not ~A - no pid file" cmd)
+			 (format nil (cond 
+				   ((string-equal cmd "status")
+				    (cond 
+				      ((= result ex-ok) "running")
+				      ((= result ex-unavailable) "not running")
+				      ((= result +pid-file-not-found+) "not running - no pid file")
+				      (t "error checking status")))
+				   ((string-equal cmd "stop")
+				    (cond 
+				      ((= result ex-ok) "stopped")
+				      ((= result +pid-file-not-found+) "not stopped - no pid file")
+				      (t "error stopped")))
+				   ((= result ex-ok) "~&~Aed")
+				   (t "~&not ~Aed"))
+			     cmd))))
+    (log-info analize-str)
+    (format t "~A~%" analize-str)
+    (log-info " ... ok"))
+  result)
+
 (defmacro case-command (cmd &rest cases-bodies)
   `(cond 
-     ,@(loop for clause in cases-bodies
-	  collect `((string-equal ,cmd ,(first clause))
-		    ,@(rest clause)))))
+     ,@(loop for (cmd-clause . forms) in cases-bodies
+	  collect `((string-equal ,cmd ,cmd-clause) ,@forms))))		    
 
-(defun-ext daemonized (daemon-command 
-		   &key main-function name user group pid-file before-parent-exit-fn exit)
-					;		   &aux as-daemon-p)
-					;  (setq as-daemon-p (not (string= *daemon-command* "nodaemon")))
+(defun-ext daemonized (daemon-command conf-params)
   (check-daemon-command daemon-command)
-  (let ((*process-type* :parent)
-	(clean-params (list :pid-file pid-file))
-	(start-params (list :pid-file pid-file :before-parent-exit-fn before-parent-exit-fn 
-			    :name name :user user :group group :main-function main-function)))
-    (case-command daemon-command
-		  ("zap" (zap-service clean-params))
-		  ("stop" (stop-service clean-params))
-		  ("kill" (kill-service clean-params))
-		  ("restart" (stop-service clean-params)
-			     (start-service start-params))
-		  ("start" (start-service start-params))		   
-		  ("nodaemon" (simple-start start-params)))
-    (when (and exit (eq :parent *process-type*))
-      (exit))))
-
-
+  (when (or (pathnamep conf-params) (stringp conf-params))
+    (setf conf-params
+	  (with-open-file (stream conf-params)
+	    (read stream))))
+  (check-conf-params conf-params)  
+  
+  (log-info "conf-params is: ~S" conf-params)
+  (let* ((*process-type* :parent)
+	 (result (block into-daemonized
+		   (let ((*fn-exit* #'(lambda (result) 
+					(return-from into-daemonized result))))
+		     (case-command daemon-command
+				   ("zap" (zap-service conf-params))
+				   ("stop" (stop-service conf-params))
+				   ("kill" (kill-service conf-params))
+				   ("restart" (let ((res (block into-daemonized-lev2
+							   (let ((*fn-exit* #'(lambda (result)
+										 (return-from into-daemonized-lev2 result))))
+							     (stop-service conf-params)))))
+						(if (= ex-ok res)
+						    (start-service conf-params)
+						    (funcall *fn-exit* res))))
+				   ("start" (start-service conf-params))		   
+				   ("nodaemon" (simple-start conf-params))
+				   ("status" (status-service conf-params)))))))    
+    (when (eq :parent *process-type*)
+      (analized-and-print-result result daemon-command conf-params)
+      (when (getf conf-params :exit) (exit result)))))
+	  
 #|
 - Действия необходимые для отсоединения от терминала
      - определение константы sb-unix:tiocnotty

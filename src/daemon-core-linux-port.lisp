@@ -1,16 +1,18 @@
 (defpackage :daemon-core-linux-port
-  (:use :cl :daemon-logging :daemon-features :daemon-unix-api :daemon-utils-linux-port)
-  (:shadowing-import-from :daemon-unix-api #:open #:close)
-  (:import-from :daemon-sys-linux-port 
-		;#:*fn-log-info* #:*fn-log-err*
-		#:enable-interrupt)
+  (:use :cl :daemon-share :daemon-logging :daemon-features :daemon-unix-api-port :daemon-utils-linux-port)
+  (:shadowing-import-from :daemon-unix-api-port #:open #:close)
+  #+sbcl
+  (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt)
+  #-sbcl 
+  #.(error "Not implemented for non sbcl lisp systems")  
   (:export #:get-daemon-command
 	   #:check-daemon-command
 	   #:zap-daemon
 	   #:stop-daemon
 	   #:kill-daemon	   
 	   #:start-daemon
-	   #:start-as-no-daemon))
+	   #:start-as-no-daemon
+	   #:status-daemon))
 
 (in-package :daemon-core-linux-port)
 
@@ -38,6 +40,9 @@
   (setf *debugger-hook* nil))
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun-ext cur-exit (&optional (status ex-ok))
+  (funcall (or *fn-exit* #'exit) status))
+
 ;;;;;; Daemon commands ;;;;;;;
 #+daemon.as-daemon
 (progn
@@ -49,25 +54,45 @@
 			  (declare (ignore sig info context))
 			  (progn 
 			    (log-info "Stop ~A daemon" (or daemon-name ""))
-			    (exit ex-ok)))))
+			    (cur-exit ex-ok)))))
 
   (defun-ext zap-daemon (pid-file)
-    (delete-file pid-file))
+    (if (not (probe-file pid-file))
+	(cur-exit +pid-file-not-found+)
+	(progn 
+	  (delete-file pid-file)
+	  (cur-exit ex-ok))))
 
   (defun-ext stop-daemon (pid-file)
-    (let ((pid (read-pid-file pid-file)))
-      (kill pid sigusr1)
-      (loop
-	 while (ignore-errors (kill pid 0))
-	 do (sleep 0.1))
-      (delete-file pid-file)))
+    (if (not (probe-file pid-file))
+	(cur-exit +pid-file-not-found+)
+	(let ((pid (read-pid-file pid-file)))
+	  (kill pid sigusr1)
+	  (loop
+	     while (ignore-errors (kill pid 0))
+	     do (sleep 0.1))
+	  (delete-file pid-file)
+	  (cur-exit ex-ok))))
+
+  (defun-ext status-daemon (pid-file)
+    (if (not (probe-file pid-file))
+	(cur-exit +pid-file-not-found+)
+	(let ((pid (read-pid-file pid-file)))
+	  (cur-exit (cond 
+		      ((ignore-errors (kill pid 0)) ex-ok)
+		      (t ex-unavailable))))))
 
   (defun-ext kill-daemon (pid-file)
-    (kill (read-pid-file pid-file) sigkill)
-    (delete-file pid-file))
+    (if (not (probe-file pid-file))
+	(cur-exit +pid-file-not-found+)
+	(progn 
+	  (kill (read-pid-file pid-file) sigkill)
+	  (delete-file pid-file)
+	  (cur-exit ex-ok))))
  
-(defun-ext start-daemon (name pid-file &key configure-rights-fn preparation-fn main-fn before-parent-exit-fn)
-  (fork-this-process
+  (defun-ext start-daemon (name pid-file &key configure-rights-fn preparation-fn main-fn before-parent-exit-fn)
+    (fork-this-process
+     :fn-exit #'cur-exit
      :parent-form-before-fork configure-rights-fn
      :parent-form-before-exit before-parent-exit-fn
      :child-form-after-fork #'set-global-error-handler

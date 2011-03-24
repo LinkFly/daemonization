@@ -10,7 +10,8 @@
 	   #:zap-service
 	   #:kill-service
 	   #:start-service
-	   #:simple-start))
+	   #:simple-start
+	   #:status-service))
 
 (in-package :daemon-core-port)
 
@@ -24,6 +25,11 @@
     #-linux (error "STOP-SERVICE not implemented on not Linux")
     #+linux
     (stop-daemon (getf params :pid-file)))
+
+  (defun-ext status-service (params)
+    #-linux (error "STATUS-SERVICE not implemented on not Linux")
+    #+linux
+    (status-daemon (getf params :pid-file)))
   
   (defun-ext zap-service (params)
     #-linux (error "ZAP-SERVICE not implemented on not Linux")

@@ -31,6 +31,6 @@
 				  :directory (pathname-directory *load-pathname*)))
     (read stream)))
 
-(apply #'daemonization:daemonized *command* :exit *exit* *daemon-parameters*) 
+(funcall #'daemonization:daemonized *command* (append (list :exit *exit*) *daemon-parameters*))
 
 

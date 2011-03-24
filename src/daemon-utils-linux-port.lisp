@@ -1,15 +1,18 @@
 (defpackage :daemon-utils-linux-port
-  (:use :cl :daemon-logging :daemon-unix-api)
-  (:shadowing-import-from :daemon-unix-api #:open #:close)
-  (:import-from :daemon-sys-linux-port 
-		;#:*fn-log-info* #:*fn-log-err*
-		#:enable-interrupt)		
+  (:use :cl :daemon-logging :daemon-unix-api-port)
+  (:shadowing-import-from :daemon-unix-api-port #:open #:close)
+  #+sbcl	   
+  (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt)
+  #-sbcl 
+  #.(error "Not implemented for non sbcl lisp systems")
+  (:import-from :daemon-share #:*process-type* #:ex-ok #:ex-software)
   (:export #:set-current-dir #:set-umask
 	   #:detach-from-tty #:switch-to-slave-pseudo-terminal #:start-new-session
 	   #:preparation-before-grant-listen-privileged-ports	   
 	   #:set-grant-listen-privileged-ports #:linux-change-user
-	   #:exit #:fork-this-process #:create-pid-file #:read-pid-file
-	   #:fork-and-parent-exit-on-child-signal))	   
+	   #:fork-this-process #:create-pid-file #:read-pid-file
+	   #:fork-and-parent-exit-on-child-signal
+	   #:exit))   
 
 (in-package :daemon-utils-linux-port)
 
@@ -106,18 +109,22 @@
   ) ;feature :daemon.listen-privileged-ports
 
 #+daemon.as-daemon
-(defun fork-and-parent-exit-on-child-signal (&optional fn-before-exit &aux pid)  
-  (unless (= (setf pid (fork)) 0)       
+(defun-ext fork-and-parent-exit-on-child-signal (&optional fn-before-exit fn-exit &aux pid)  
+  (unless (= (setf pid (fork)) 0)
+    (setf *process-type* :parent)
     (loop 
        while (null (get-status))
        do (sleep 0.1))
     (when fn-before-exit (funcall fn-before-exit pid (get-status)))
-    (exit (if (= (get-status) sigusr1)
-	      ex-ok
-	      ex-software))))
+    (funcall (or fn-exit #'exit)
+	     (if (= (get-status) sigusr1)
+		 ex-ok
+		 ex-software)))
+  (setf *process-type* :child))
 
 #+daemon.as-daemon
-(defun fork-this-process (&key 
+(defun-ext fork-this-process (&key 
+			  fn-exit
 			     parent-form-before-fork
 			     parent-form-before-exit
 			     child-form-after-fork
@@ -139,23 +146,14 @@
      
     (log-info " ... OK(preparing before fork).")
      
-    (fork-and-parent-exit-on-child-signal parent-form-before-exit)
-    #|(unless (= (fork) 0)       
-    (loop 
-    while (null (get-status))
-    do (sleep 0.1))       
-       ;(				;
-    (exit (if (= (get-status) sigusr1)
-    ex-ok
-    ex-software)))
-     |#
+    (wrap-log (fork-and-parent-exit-on-child-signal parent-form-before-exit fn-exit))
 
-     (wrap-log 
-       (when child-form-after-fork (funcall child-form-after-fork))
-       (enable-interrupt sigusr1 :default)
-       (enable-interrupt sigchld :default)
-       (when child-form-before-send-success (funcall child-form-before-send-success)))
-     (kill (getppid) sigusr1)
-     (wrap-log (when main-child-form (funcall main-child-form)))))
+    (wrap-log 
+     (when child-form-after-fork (funcall child-form-after-fork))
+     (enable-interrupt sigusr1 :default)
+     (enable-interrupt sigchld :default)
+     (when child-form-before-send-success (funcall child-form-before-send-success)))
+    (kill (getppid) sigusr1)
+    (wrap-log (when main-child-form (funcall main-child-form)))))
 
      

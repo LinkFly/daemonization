@@ -4,7 +4,7 @@
 	:daemon-features	
 	#-linux (error "Package DAEMON-UTILS-PORT not implemented on not Linux")
 	#+linux
-	:daemon-utils-linux-port)
+	:daemon-utils-linux-port)  
   (:export #:restrict-rights
 	   #:isolate-process
 	   #:exit))	   
