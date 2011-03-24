@@ -1,7 +1,7 @@
 (defpackage :daemonization 
   (:use :cl :daemon-share :daemon-logging :daemon-core-port)
-  (:import-from :daemon-utils-port #:exit)
-  (:export #:daemonized))
+  (:import-from :daemon-utils-port #:exit #:get-args)
+  (:export #:daemonized #:get-args))
 
 (in-package :daemonization)
 
@@ -14,6 +14,11 @@
 ;(daemon-logging::f 3 4 :z 1)
 ;(defun f (x &key y) (+ x y))
 ;;;;;;;;;;;;;;;;;;;;;;;;;
+(defmacro with-silence (&body body)
+  `(with-output-to-string (*trace-output*)
+     (with-output-to-string (*standard-output*)
+       (with-output-to-string (*error-output*)
+       ,@body))))
 
 (define-constant +all-daemon-commands+ '("start" "stop" "zap" "kill" "restart" "nodaemon" "status"))
 (define-constant +conf-parameters+ '(:main-function :name :user :group :pid-file :before-parent-exit-fn :exit))
@@ -26,7 +31,7 @@
     +bad-cmd-str-err+ 
     (format nil "Bad daemon command. Command must be one of the ~S"
 	    +all-daemon-commands+))
-    
+
 (defun-ext check-daemon-command (cmd)
   (log-info "Check daemon command ...")
   (unless (find cmd +all-daemon-commands+ :test #'string-equal)
@@ -89,7 +94,10 @@
 	  (with-open-file (stream conf-params)
 	    (read stream))))
   (check-conf-params conf-params)  
-  
+  (when (getf conf-params :pid-file)
+    (setf (getf conf-params :pid-file) 
+	  (ensure-absolute-path (getf conf-params :pid-file))))
+
   (log-info "conf-params is: ~S" conf-params)
   (let* ((*process-type* :parent)
 	 (result (block into-daemonized

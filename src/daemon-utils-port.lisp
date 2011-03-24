@@ -7,7 +7,8 @@
 	:daemon-utils-linux-port)  
   (:export #:restrict-rights
 	   #:isolate-process
-	   #:exit))	   
+	   #:exit
+	   #:get-args))	   
 
 (in-package :daemon-utils-port)
 

@@ -4,17 +4,6 @@
 	- добавить переключатель вывода даты/времени
 	- поменять место появления :ERROR в (log-err ...)
 		...
-done. 2. Протестировать остальные (кроме start) команды. 
-done. 3. Решить проблему вывода лишних сообщений. 
-done. 3. Добавить сообщения о результатах запуска/остановки.
-done. 4. Обработать ошибку остановки демона который не запущен.
-5. Обработать ошибку удаления файла с pid.
-6. Обработать ошибку при restart.
-done. 7. Изменить внутреннюю структуру:
-	- продумать вызов condition на неправильный набор экспортируемых символов (и параметров ф-ий), связанных с unix.
-	- изменить структуру, чтобы сократить кол-во макросов чтения #+sbcl
-		...
-done. 8. Добавить команду status.
-		
-Correct internal system structure. Added command status. Advancing error handling. Added daemon-interfaces package and file. Remove many #+sbcl features (pop on highes level). Added *fn-exit* contained non-local exit from nested forms. Change interface daemonized. Added checking conf parameters.
- 
+
+
+

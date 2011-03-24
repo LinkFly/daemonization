@@ -1,0 +1,1 @@
+sbcl --noinform --load daemon-with-restarter.lisp $1

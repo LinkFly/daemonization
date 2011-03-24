@@ -2,7 +2,7 @@
   (:use :cl :daemon-logging :daemon-unix-api-port)
   (:shadowing-import-from :daemon-unix-api-port #:open #:close)
   #+sbcl	   
-  (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt)
+  (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt #:get-args)
   #-sbcl 
   #.(error "Not implemented for non sbcl lisp systems")
   (:import-from :daemon-share #:*process-type* #:ex-ok #:ex-software)
@@ -12,7 +12,7 @@
 	   #:set-grant-listen-privileged-ports #:linux-change-user
 	   #:fork-this-process #:create-pid-file #:read-pid-file
 	   #:fork-and-parent-exit-on-child-signal
-	   #:exit))   
+	   #:exit #:get-args))   
 
 (in-package :daemon-utils-linux-port)
 
