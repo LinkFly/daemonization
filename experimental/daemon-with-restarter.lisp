@@ -36,6 +36,7 @@
 			   :before-parent-exit-fn #'(lambda (pid status)			       
 						      (unless (= status sb-posix:sigchld)
 							(restart-process:restart-process-on-stops pid
-												  :revision-timeout 3)))))
+												  :revision-timeout 3))))
+			  :on-error :exit-from-lisp)
 
 

@@ -19,10 +19,10 @@
 			      :before-parent-exit-fn nil)) 
 
 (defun daemon-cmd (cmd)
-  (daemonization:daemonized cmd *daemon-conf*))
+  (daemonization:daemonized cmd *daemon-conf* :on-error :as-ignore-errors))
 
 (defun daemon-status ()
-  (daemonization:daemonized "status" *daemon-conf*))
+  (daemonization:daemonized "status" *daemon-conf* :on-error :as-ignore-errors))
 
 (princ "Tests daemonized ... ")
 (defparameter *parent-pid* (daemonization:getpid))
@@ -36,6 +36,9 @@
 	 (progn (daemon-cmd "stop") (not (eql daemon-share:ex-ok (daemon-status))))
 	 (progn (daemon-cmd "start") (return-if-child) (eql daemon-share:ex-ok (daemon-status)))
 	 (progn (daemon-cmd "kill") (not (eql daemon-share:ex-ok (daemon-status))))
+	 (progn (daemon-cmd "start") (return-if-child) (eql daemon-share:ex-ok (daemon-status)))
+	 (progn (daemon-cmd "restart") (return-if-child) (eql daemon-share:ex-ok (daemon-status)))
+	 (progn (daemon-cmd "stop") (not (eql daemon-share:ex-ok (daemon-status))))
 	 )
 	(princ " ... Tests passed.")
 	(princ " ... Tests failed."))

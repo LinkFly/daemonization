@@ -56,27 +56,66 @@
   (log-info " ... OK.")
   conf-params)
 
-(defun-ext analized-and-print-result (result cmd conf-params)
+;(defparameter alist-err-messages 
+;  '(
+(defmacro result-messages (cmd-sym result-sym alist-messages)
+  ;(setq alist-messages `(((,ex-ok "status" "kill") "fmt-str ~S ~A" 3434 data) (("stop" ,ex-software) "fmt-str ~S" 3434)))
+  ;(setq cmd-sym 'cmd)
+  ;(setq result-sym 'result)
+  `(cond 
+     ,@(loop for ((result . cmds) fmt-str . args) in alist-messages
+	  collect `((and (= ,result-sym ,result)
+			 (or ,@(loop for cmd in cmds
+				  collect `(string= ,cmd-sym ,cmd))))
+		    (funcall #'format nil ,fmt-str ,@args)))))
+     
+(defun-ext analized-and-print-result (result cmd conf-params &aux status extra-status)
   (declare (ignorable conf-params))
   (log-info "here analizing result ...")
-  (let ((analize-str (if (and (= result +pid-file-not-found+)
+  (if (consp result)
+      (setq status (first result)
+	    extra-status (rest result))
+      (setq status result))
+  (let ((analize-str #|(if (and (= result +pid-file-not-found+)
 			      (not (string-equal "status" cmd)))
 			 (format nil "not ~A - no pid file" cmd)
 			 (format nil (cond 
-				   ((string-equal cmd "status")
-				    (cond 
-				      ((= result ex-ok) "running")
-				      ((= result ex-unavailable) "not running")
-				      ((= result +pid-file-not-found+) "not running - no pid file")
-				      (t "error checking status")))
-				   ((string-equal cmd "stop")
-				    (cond 
-				      ((= result ex-ok) "stopped")
-				      ((= result +pid-file-not-found+) "not stopped - no pid file")
-				      (t "error stopped")))
-				   ((= result ex-ok) "~&~Aed")
-				   (t "~&not ~Aed"))
-			     cmd))))
+				       ((string-equal cmd "status")
+					(cond 
+					  ((= result ex-ok) "running")
+					  ((= result ex-unavailable) "not running")
+					  ((= result +pid-file-not-found+) "not running - no pid file")
+					  (t "error checking status")))
+				       ((string-equal cmd "stop")
+					(cond 
+					  ((= result ex-ok) "stopped")
+					  (t "error stopped")))
+				       ((string-equal cmd "zapped")
+					(cond 
+					  ((= result ex-ok) "zapped")
+					  (t "error stopped"))) 
+				       (t "~&not ~Aed"))
+				 cmd))
+|#
+	 (result-messages cmd 
+			  status
+			  (((+pid-file-not-found+ "status") "not-running - no pid file ~S" extra-status)
+			   ((+pid-file-not-found+ "start" "stop" "zap" "kill" "restart") "failed ~A - no pid file ~S" cmd extra-status)
+			   ((ex-ok "status") "running ~S" extra-status)
+			   ((ex-unavailable "status") "not-running ~S" extra-status) 
+			   ((ex-ok "start") "success started ~S" extra-status)
+			   ((ex-ok "stop" "zap" "kill" "restart") "success ~A ~S" cmd extra-status) 
+			   ((ex-software "start" "stop" "zap" "kill" "restart" "status") "failed ~A ~S" cmd extra-status)))))
+			   
+    #|(macroexpand-1 '(result-messages cmd 
+			  status
+			  (((ex-ok "start") "success started ~S" extra-status)
+			   ((ex-ok "stop" "kill" "zap") "success ~A ~S" cmd extra-status) 
+			   ((ex-software "stop") "failed ~A ~S" cmd extra-status))))
+|#
+;    analize-str))
+;(analized-and-print-result ex-ok "status" nil)
+
     (log-info analize-str)
     (format t "~A~%" analize-str)
     (log-info " ... ok"))
@@ -87,40 +126,59 @@
      ,@(loop for (cmd-clause . forms) in cases-bodies
 	  collect `((string-equal ,cmd ,cmd-clause) ,@forms))))		    
 
-(defun-ext daemonized (daemon-command conf-params)
-  (check-daemon-command daemon-command)
-  (when (or (pathnamep conf-params) (stringp conf-params))
-    (setf conf-params
-	  (with-open-file (stream conf-params)
-	    (read stream))))
-  (check-conf-params conf-params)  
-  (when (getf conf-params :pid-file)
-    (setf (getf conf-params :pid-file) 
-	  (ensure-absolute-path (getf conf-params :pid-file))))
+(defun-ext daemonized (daemon-command conf-params &key (on-error :call-error) &aux on-error-variants)
+  (setq on-error-variants '(:return-error :as-ignore-errors :call-error :exit-from-lisp))
+  (assert (member on-error on-error-variants)
+	  () 
+	  "Bad keyword parameter on-error = ~S. Must be one of the ~S" on-error on-error-variants)
+  (handler-case 
+      (progn 
+	(check-daemon-command daemon-command)
+	(when (or (pathnamep conf-params) (stringp conf-params))
+	  (setf conf-params
+		(with-open-file (stream conf-params)
+		  (read stream))))
+	(check-conf-params conf-params)  
+	(when (getf conf-params :pid-file)
+	  (setf (getf conf-params :pid-file) 
+		(ensure-absolute-path (getf conf-params :pid-file))))
 
-  (log-info "conf-params is: ~S" conf-params)
-  (let* ((*process-type* :parent)
-	 (result (block into-daemonized
-		   (let ((*fn-exit* #'(lambda (result) 
-					(return-from into-daemonized result))))
-		     (case-command daemon-command
-				   ("zap" (zap-service conf-params))
-				   ("stop" (stop-service conf-params))
-				   ("kill" (kill-service conf-params))
-				   ("restart" (let ((res (block into-daemonized-lev2
-							   (let ((*fn-exit* #'(lambda (result)
-										 (return-from into-daemonized-lev2 result))))
-							     (stop-service conf-params)))))
-						(if (= ex-ok res)
-						    (start-service conf-params)
-						    (funcall *fn-exit* res))))
-				   ("start" (start-service conf-params))		   
-				   ("nodaemon" (simple-start conf-params))
-				   ("status" (status-service conf-params)))))))    
-    (when (eq :parent *process-type*)
-      (analized-and-print-result result daemon-command conf-params)
-      (when (getf conf-params :exit) (exit result))
-      result)))
+	(log-info "conf-params is: ~S" conf-params)
+	(let* ((*process-type* :parent)
+	       (result (block into-daemonized
+			 (let ((*fn-exit* #'(lambda (&optional (status ex-ok) &rest extra-status) 
+					      (return-from into-daemonized (cons status extra-status)))))
+			   (case-command daemon-command
+					 ("zap" (zap-service conf-params))
+					 ("stop" (stop-service conf-params))
+					 ("kill" (kill-service conf-params))
+					 ("restart" (let ((res (block into-daemonized-lev2
+								 (let ((*fn-exit* #'(lambda (&optional (status ex-ok) &rest extra-status)
+										      (return-from into-daemonized-lev2
+											(cons status extra-status)))))
+								   (stop-service conf-params)))))
+						      (if (if (numberp res) 
+							      (= ex-ok res)
+							      (= ex-ok (first res)))
+							  (let ((res (start-service conf-params)))
+							    (funcall *fn-exit* res)))))
+					 ("start" (start-service conf-params))		   
+					 ("nodaemon" (simple-start conf-params))
+					 ("status" (status-service conf-params)))))))	  
+	  (when (eq :parent *process-type*)
+	    (analized-and-print-result result daemon-command conf-params)
+	    (setq result (if (consp result) (first result) result))
+	    (when (getf conf-params :exit) 
+	      (exit result))	    
+	    result)))
+    (error (err)
+      (log-err "~A~%" err)
+      (format t "ERROR: ~A~%" err)
+      (case on-error
+	(:exit-from-lisp (exit ex-general))
+	(:call-error (error err))
+	(:return-error err)
+	(:as-ignore-errors (values nil err))))))
 	  
 #|
 - Действия необходимые для отсоединения от терминала

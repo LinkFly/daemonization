@@ -2,7 +2,7 @@
   (:use :cl)
   (:export #:define-constant #:*process-type* #:*fn-exit* #:ex-ok #:ex-software #:ex-unavailable
 	   #:+pid-file-not-found+
-	   #:+system-name+ #:get-system-path #:absolute-path-p #:ensure-absolute-path))
+	   #:+system-name+ #:get-system-path #:absolute-path-p #:ensure-absolute-path #:ex-general))
 
 (in-package :daemon-share)
 
@@ -14,9 +14,11 @@
 (defparameter *process-type* nil
   "Must be nil or :parent or :child. Needed for daemonize (there reading) and fork (there set)")
 
-(defparameter *fn-exit* nil)
+(defparameter *fn-exit* nil "Function for none local exit. Must be have parameters (&optional (status ex-ok) &rest extra-status).")
+;(function-lambda-expression *fn-exit*)
 
 (defconstant ex-ok 0)
+(defconstant ex-general 1)
 (defconstant ex-software 70)
 (defconstant ex-unavailable 69)
 (defconstant +pid-file-not-found+ 256)

@@ -213,8 +213,9 @@
 		"~S")
 	    sym))
 
-(defun present-function (function)  
+#|(defun present-function (function)  
   (third (multiple-value-list (function-lambda-expression function))))
+|#
 
 (defun object-is-not-printable-p (obj)
   (handler-case (let ((*print-readably* t)) 

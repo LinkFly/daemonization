@@ -40,8 +40,11 @@
   (setf *debugger-hook* nil))
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun-ext cur-exit (&optional (status ex-ok))
-  (funcall (or *fn-exit* #'exit) status))
+(defun-ext cur-exit (&optional (status ex-ok) &rest extra-status)
+  ;(log-err "is bug. *fn-exit*: ~S" *fn-exit*)
+  (if *fn-exit*
+      (apply *fn-exit* status extra-status)
+      (apply #'exit status))) 
 
 ;;;;;; Daemon commands ;;;;;;;
 #+daemon.as-daemon
@@ -58,41 +61,45 @@
 
   (defun-ext zap-daemon (pid-file)
     (if (not (probe-file pid-file))
-	(cur-exit +pid-file-not-found+)
+	(cur-exit +pid-file-not-found+ :pid-file pid-file)
 	(progn 
 	  (delete-file pid-file)
-	  (cur-exit ex-ok))))
+	  (cur-exit ex-ok :pid-file pid-file))))
 
   (defun-ext stop-daemon (pid-file)
     (if (not (probe-file pid-file))
-	(cur-exit +pid-file-not-found+)
+	(cur-exit +pid-file-not-found+ :pid-file pid-file)
 	(let ((pid (read-pid-file pid-file)))
 	  (kill pid sigusr1)
 	  (loop
 	     while (ignore-errors (kill pid 0))
 	     do (sleep 0.1))
 	  (delete-file pid-file)
-	  (cur-exit ex-ok))))
+	  (cur-exit ex-ok :pid pid :pid-file pid-file))))
 
   (defun-ext status-daemon (pid-file)
     (if (not (probe-file pid-file))
-	(cur-exit +pid-file-not-found+)
+	(cur-exit +pid-file-not-found+ :pid-file pid-file)
 	(let ((pid (read-pid-file pid-file)))
 	  (cur-exit (cond 
 		      ((ignore-errors (kill pid 0)) ex-ok)
-		      (t ex-unavailable))))))
+		      (t ex-unavailable))
+		    :pid pid :pid-file pid-file))))
 
   (defun-ext kill-daemon (pid-file)
     (if (not (probe-file pid-file))
 	(cur-exit +pid-file-not-found+)
-	(progn 
-	  (kill (read-pid-file pid-file) sigkill)
+	(let ((pid (read-pid-file pid-file))) 
+	  (kill pid sigkill)
 	  (delete-file pid-file)
-	  (cur-exit ex-ok))))
+	  (cur-exit ex-ok :pid pid :pid-file pid-file))))
  
   (defun-ext start-daemon (name pid-file &key configure-rights-fn preparation-fn main-fn before-parent-exit-fn)
     (fork-this-process
-     :fn-exit #'cur-exit
+     :fn-exit #'(lambda (&optional (status ex-ok) &rest extra-status)
+		  (apply #'cur-exit
+			 status 
+			 (append extra-status (list :name name :pid-file pid-file))))
      :parent-form-before-fork configure-rights-fn
      :parent-form-before-exit before-parent-exit-fn
      :child-form-after-fork #'set-global-error-handler

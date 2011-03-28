@@ -119,7 +119,8 @@
     (funcall (or fn-exit #'exit)
 	     (if (= (get-status) sigusr1)
 		 ex-ok
-		 ex-software)))
+		 ex-software)
+	     :pid pid))
   (setf *process-type* :child))
 
 #+daemon.as-daemon
