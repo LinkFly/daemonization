@@ -58,7 +58,7 @@
 
 ;(defparameter alist-err-messages 
 ;  '(
-(defmacro result-messages (cmd-sym result-sym alist-messages)
+(defmacro result-messages (cmd-sym result-sym alist-messages &optional extra-prompts)
   ;(setq alist-messages `(((,ex-ok "status" "kill") "fmt-str ~S ~A" 3434 data) (("stop" ,ex-software) "fmt-str ~S" 3434)))
   ;(setq cmd-sym 'cmd)
   ;(setq result-sym 'result)
@@ -67,7 +67,9 @@
 	  collect `((and (= ,result-sym ,result)
 			 (or ,@(loop for cmd in cmds
 				  collect `(string= ,cmd-sym ,cmd))))
-		    (funcall #'format nil ,fmt-str ,@args)))))
+		    (format nil "~A~A" 
+			    (funcall #'format nil ,fmt-str ,@args)
+			    (if ,extra-prompts (format nil " ~S" ,extra-prompts) ""))))))
      
 (defun-ext analized-and-print-result (result cmd conf-params &aux status extra-status)
   (declare (ignorable conf-params))
@@ -76,46 +78,17 @@
       (setq status (first result)
 	    extra-status (rest result))
       (setq status result))
-  (let ((analize-str #|(if (and (= result +pid-file-not-found+)
-			      (not (string-equal "status" cmd)))
-			 (format nil "not ~A - no pid file" cmd)
-			 (format nil (cond 
-				       ((string-equal cmd "status")
-					(cond 
-					  ((= result ex-ok) "running")
-					  ((= result ex-unavailable) "not running")
-					  ((= result +pid-file-not-found+) "not running - no pid file")
-					  (t "error checking status")))
-				       ((string-equal cmd "stop")
-					(cond 
-					  ((= result ex-ok) "stopped")
-					  (t "error stopped")))
-				       ((string-equal cmd "zapped")
-					(cond 
-					  ((= result ex-ok) "zapped")
-					  (t "error stopped"))) 
-				       (t "~&not ~Aed"))
-				 cmd))
-|#
+  (let ((analize-str
 	 (result-messages cmd 
 			  status
-			  (((+pid-file-not-found+ "status") "not-running - no pid file ~S" extra-status)
-			   ((+pid-file-not-found+ "start" "stop" "zap" "kill" "restart") "failed ~A - no pid file ~S" cmd extra-status)
-			   ((ex-ok "status") "running ~S" extra-status)
-			   ((ex-unavailable "status") "not-running ~S" extra-status) 
-			   ((ex-ok "start") "success started ~S" extra-status)
-			   ((ex-ok "stop" "zap" "kill" "restart") "success ~A ~S" cmd extra-status) 
-			   ((ex-software "start" "stop" "zap" "kill" "restart" "status") "failed ~A ~S" cmd extra-status)))))
-			   
-    #|(macroexpand-1 '(result-messages cmd 
-			  status
-			  (((ex-ok "start") "success started ~S" extra-status)
-			   ((ex-ok "stop" "kill" "zap") "success ~A ~S" cmd extra-status) 
-			   ((ex-software "stop") "failed ~A ~S" cmd extra-status))))
-|#
-;    analize-str))
-;(analized-and-print-result ex-ok "status" nil)
-
+			  (((+pid-file-not-found+ "status") "not-running - no pid file")
+			   ((+pid-file-not-found+ "start" "stop" "zap" "kill" "restart") "failed ~A - no pid file" cmd)
+			   ((ex-ok "status") "running")
+			   ((ex-unavailable "status") "not-running") 
+			   ((ex-ok "start") "success started")
+			   ((ex-ok "stop" "zap" "kill" "restart") "success ~A" cmd) 
+			   ((ex-software "start" "stop" "zap" "kill" "restart" "status") "failed ~A" cmd))
+			  extra-status)))
     (log-info analize-str)
     (format t "~A~%" analize-str)
     (log-info " ... ok"))
