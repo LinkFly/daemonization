@@ -1,0 +1,1 @@
+cat /var/log/syslog | grep -o '(:DAEMONIZATION.*' > tests.log

@@ -12,7 +12,7 @@
 	   #:set-grant-listen-privileged-ports #:linux-change-user
 	   #:fork-this-process #:create-pid-file #:read-pid-file
 	   #:fork-and-parent-exit-on-child-signal
-	   #:exit #:get-args))   
+	   #:exit #:get-args #:getpid))   
 
 (in-package :daemon-utils-linux-port)
 

@@ -8,7 +8,8 @@
   (:export #:restrict-rights
 	   #:isolate-process
 	   #:exit
-	   #:get-args))	   
+	   #:get-args
+	   #:getpid))	   
 
 (in-package :daemon-utils-port)
 

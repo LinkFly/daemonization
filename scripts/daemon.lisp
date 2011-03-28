@@ -8,8 +8,7 @@
 
 (with-output-to-string (*trace-output*)
   (with-output-to-string (*standard-output*)
-    (with-output-to-string (*error-output*)
-      (asdf:load-system :daemonization))))
+      (asdf:load-system :daemonization)))
 
 (let* ((args (rest (daemonization:get-args)))
        (conf-file (first args))

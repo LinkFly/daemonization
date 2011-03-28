@@ -5,7 +5,8 @@
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
 	   #:*print-call #:*print-called-form-with-result*
 	   #:*fn-log-info* #:*fn-log-err* #:*log-prefix*
-	   #:add-daemon-log #:get-daemon-log-list))
+	   #:add-daemon-log #:get-daemon-log-list
+	   #:*print-log-datetime* #:*fn-log-pid*))
 
 (in-package :daemon-logging)
 
@@ -21,6 +22,9 @@
 (defparameter *disabled-functions-logging* nil)
 (defparameter *disabled-layers-logging* nil)
 (defparameter *log-prefix* nil)
+(defparameter *print-log-datetime* nil)
+(defparameter *simple-log* nil)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Logging for actions on differently layers, for using
@@ -32,6 +36,7 @@
 				(apply #'format t fmt-str args)))
 (defparameter *fn-log-err* #'(lambda (fmt-str &rest args)
 				(apply #'format t fmt-str args)))
+(defparameter *fn-log-pid* nil)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;; Logging native parameter ;;;;;;;;;;
@@ -82,9 +87,25 @@
 ;(f 3 4)
 ;;;;;;;;;;;;;;;;;
 
-(defun wrap-fmt-str (fmt-str)
+(defun get-datetime ()
+  (multiple-value-bind (sec min hour date month year)
+      (get-decoded-time)
+    (format nil "~D.~2,'0D.~2,'0D ~2,'0D:~2,'0D:~2,'0D" year month date hour min sec)))
+
+(defun wrap-fmt-str (fmt-str &key before-message)
+  (when *simple-log* 
+    (return-from wrap-fmt-str fmt-str))
   (format nil
-	  "~%(:DAEMONIZATION~26A~A ~A~A)"
+	  "~%(:DAEMONIZATION~A~A~A~26A~A ~A~A)"
+	  (if before-message
+	      (format nil " ~A " before-message)
+	      "")
+	  (if *print-log-datetime* 
+	      (format nil " ~S " (get-datetime))
+	      "")
+	  (if *fn-log-pid*
+	      (format nil " ~A " (funcall *fn-log-pid*))
+	      "")
 	  (if *print-log-layer* 
 	      (format nil " ~A" (get-log-layer))
 	      "")
@@ -94,8 +115,10 @@
 	  (get-indent)
 	  fmt-str))
 
-(defun logging (fn-log format-str &rest args)
-  (apply fn-log (wrap-fmt-str format-str) args))
+(defun logging (fn-log format-str-or-list &rest args)
+  (unless (consp format-str-or-list) 
+    (setq format-str-or-list (list format-str-or-list)))
+  (apply fn-log (apply #'wrap-fmt-str format-str-or-list) args))
 
 (defun syslog-info (format-str &rest args)  
   (apply #'logging (get-fn-log-info) format-str args))
@@ -108,7 +131,7 @@
 (defmacro log-err (format-str &rest args)
   `(when *print-log-err*
      (let ((*def-in-package* (load-time-value *package*)))     
-       (logging (get-fn-log-err) (format nil "~S" ,format-str) ,@args))))
+       (logging (get-fn-log-err) (list (format nil "~S" ,format-str) :before-message ":ERROR") ,@args))))
 
 (defun as-string (sexpr)
   (unless (stringp sexpr)

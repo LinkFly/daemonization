@@ -1,7 +1,7 @@
 (defpackage :daemonization 
   (:use :cl :daemon-share :daemon-logging :daemon-core-port)
-  (:import-from :daemon-utils-port #:exit #:get-args)
-  (:export #:daemonized #:get-args))
+  (:import-from :daemon-utils-port #:exit #:get-args #:getpid)
+  (:export #:daemonized #:get-args #:getpid))
 
 (in-package :daemonization)
 
@@ -119,7 +119,8 @@
 				   ("status" (status-service conf-params)))))))    
     (when (eq :parent *process-type*)
       (analized-and-print-result result daemon-command conf-params)
-      (when (getf conf-params :exit) (exit result)))))
+      (when (getf conf-params :exit) (exit result))
+      result)))
 	  
 #|
 - Действия необходимые для отсоединения от терминала

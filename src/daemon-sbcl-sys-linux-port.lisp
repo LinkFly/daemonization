@@ -53,6 +53,7 @@
 				(syslog log-info (add-daemon-log (apply #'format nil fmt-str args)))))
 (defparameter daemon-logging:*fn-log-err* #'(lambda (fmt-str &rest args)
 				(syslog log-err (add-daemon-log (concatenate 'string "ERROR: " (apply #'format nil fmt-str args))))))
+(defparameter daemon-logging:*fn-log-pid* #'(lambda () (format nil ":pid ~A" (getpid))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Correct open (for handling mode-t param equal nil
@@ -65,7 +66,7 @@
 (defun fork ()
   (let ((fork-res (sb-posix:fork)))
     (setf *log-prefix* 
-	  (if (= fork-res 0) (list :child-proc (getpid)) (list :parent-proc (getpid))))
+	  (if (= fork-res 0) :child-proc :parent-proc))
     (log-info "-- here was fork --")
     fork-res))
 

@@ -19,9 +19,8 @@
 
 (with-output-to-string (*trace-output*)
   (with-output-to-string (*standard-output*)
-    (with-output-to-string (*error-output*)
       (asdf:load-system :daemonization)
-      (asdf:load-system :restart-process))))
+      (asdf:load-system :restart-process)))
 
 (daemonization:daemonized (second (daemonization:get-args))
 			  (list 
