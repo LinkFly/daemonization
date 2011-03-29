@@ -30,12 +30,11 @@
     (set-grant-listen-privileged-ports)))
 
 (defun-ext restrict-rights (&key new-user new-group)  
-  (preparation-before-grant)
   #+daemon.change-user
   (when new-user
-    (change-user new-user new-group))
-  (set-grant))
-
+    (preparation-before-grant)    
+    (change-user new-user new-group)
+    (set-grant)))
 
 #+daemon.as-daemon
 (defun-ext isolate-process ()  

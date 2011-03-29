@@ -48,16 +48,21 @@
 	sigusr1
 	sigchld
 	sigkill
-
+ 
 					;not posix
 	(group-gid object)
 	(passwd-gid object)
 	(setresgid rgid egid sgid)
 	(initgroups user group)
 	(setresuid ruid euid suid)
+	
+	#+daemon.listen-privileged-ports
 	(prctl option arg)
+	#+daemon.listen-privileged-ports
 	(cap-from-text text)
+	#+daemon.listen-privileged-ports
 	(cap-set-proc cap_p)
+	#+daemon.listen-privileged-ports
 	(cap-free cap_p)      
       
 	(passwd-uid object)

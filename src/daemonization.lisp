@@ -56,8 +56,6 @@
   (log-info " ... OK.")
   conf-params)
 
-;(defparameter alist-err-messages 
-;  '(
 (defmacro result-messages (cmd-sym result-sym alist-messages &optional extra-prompts)
   ;(setq alist-messages `(((,ex-ok "status" "kill") "fmt-str ~S ~A" 3434 data) (("stop" ,ex-software) "fmt-str ~S" 3434)))
   ;(setq cmd-sym 'cmd)

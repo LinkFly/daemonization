@@ -99,7 +99,8 @@
 #+daemon.listen-privileged-ports
 (progn 
   (defun-ext preparation-before-grant-listen-privileged-ports ()
-    (prctl +PR_SET_KEEPCAPS+ 1))
+    (prctl +PR_SET_KEEPCAPS+ 1)
+    )
 
   (defun-ext set-grant-listen-privileged-ports ()
     (let ((cap_p (cap-from-text "CAP_NET_BIND_SERVICE=ep")))

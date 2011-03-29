@@ -8,7 +8,7 @@
 [1] https://github.com/archimag/restas/blob/master/contrib/restas-daemon.lisp
 
 -----------------
-Описание файлов:
+Описание файлов (несколько устаревшее):
 
 daemon-features.lisp - небольшой файл для настройки features влияющих на компиляцию. Содержит параметр
 *enabled-features* связанный по умолчанию со значением "enabled-features.sexp", которое представляет
