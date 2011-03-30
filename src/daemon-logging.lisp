@@ -23,6 +23,7 @@
 (defparameter *disabled-layers-logging* nil)
 (defparameter *log-prefix* nil)
 (defparameter *print-log-datetime* nil)
+(defparameter *print-trace-function* t)
 (defparameter *simple-log* nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -45,6 +46,7 @@
 
 ;;; For defun-ext and wrap-fmt-str ;;;;;;;;;;;;;;;;;;
 (defparameter *def-in-package* nil)
+(defparameter *trace-fn* nil)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun add-daemon-log (log)
@@ -96,7 +98,7 @@
   (when *simple-log* 
     (return-from wrap-fmt-str fmt-str))
   (format nil
-	  "~%(:DAEMONIZATION~A~A~A~26A~A ~A~A)"
+	  "~%(:DAEMONIZATION~A~A~A~26A~A ~A~A~A)"
 	  (if before-message
 	      (format nil " ~A " before-message)
 	      "")
@@ -111,8 +113,11 @@
 	      "")
 	  (if *log-prefix* 
 	      (format nil " ~S" *log-prefix*)
+	      "")	
+	  (if (and *print-trace-function* *trace-fn*)
+	      (format nil ":TRACE-FN ~A " *trace-fn*)
 	      "")
-	  (get-indent)
+	  (get-indent)	  
 	  fmt-str))
 
 (defun logging (fn-log format-str-or-list &rest args)
@@ -228,20 +233,24 @@
 	       (subseq str 0 (1- (length str)))
 	       ")"))
 
-(defun present-form (form)  
+(defun present-form (&optional form &rest extra-forms)
   (cond 
-    ((consp form)  (if (and (= 2 (length form)) 
-			    (eq 'quote (first form)))
-		       (format nil "'~A" (present-form (second form)))
-		       (str-list-close 
-			(format nil "(~{~A ~}" (mapcar #'present-form form)))))
-    ((symbolp form) (correct-sym form))
-;    ((functionp form) (format nil "~S" (present-function form)))    
-    (t (format nil 
-	       (if (object-is-not-printable-p form)
-		   "|~S|"
-		   "~S")
-	       form))))
+    ((null form) (format nil "(:values)"))
+    ((null extra-forms)
+     (cond 
+       ((consp form)  (if (and (= 2 (length form)) 
+			       (eq 'quote (first form)))
+			  (format nil "'~A" (present-form (second form)))
+			  (str-list-close 
+			   (format nil "(~{~A ~}" (mapcar #'present-form form)))))
+       ((symbolp form) (correct-sym form))
+       ;((functionp form) (format nil "~S" (present-function form)))    
+       (t (format nil 
+		  (if (object-is-not-printable-p form)
+		      "|~S|"
+		      "~S")
+		  form))))
+     (t (str-list-close (format nil "(:values ~{~A ~}" (mapcar #'present-form (cons form extra-forms)))))))
 
 (defun is-logging-p (fn-sym package)
   (not (member fn-sym *disabled-functions-logging*))
@@ -265,12 +274,13 @@
 				 `(cons ,fn ,args)))))
 	   (when (is-logging-p ,fn *def-in-package*)
 	     (syslog-call-info ,form-str))
-	   (let ((,res ,(if (is-special-or-macro-p (first form))
-			   form
-			   `(apply ,fn ,args))))
+	   (let ((,res (multiple-value-list 
+			,(if (is-special-or-macro-p (first form))
+			     form
+			     `(apply ,fn ,args)))))
 	     (when (is-logging-p ,fn *def-in-package*)
-	       (syslog-call-out (present-form ,res) (when *print-called-form-with-result* ,form-str)))
-	     ,res)))))
+	       (syslog-call-out (apply #'present-form ,res) (when *print-called-form-with-result* ,form-str)))
+	     (apply #'values ,res))))))
 
 (defmacro wrap-log (&rest forms)
   `(progn ,@(loop for form in forms
@@ -281,6 +291,7 @@
     `(defun ,name ,args
        (let* ((,this-name ',name)
 	      (*def-in-package* (load-time-value *package*))
+	      (*trace-fn* ',name)
 	      (*log-indent* *log-indent*)
 	      (,form-str (present-form (cons ',name 
 					     (mapcar #'(lambda (arg)
@@ -291,10 +302,11 @@
 	 (when (and *print-call* (is-logging-p ,this-name *def-in-package*))
 	   (syslog-call-info ,form-str))
 
-	 (let ((,res (locally ,@(remove-declare-ignore body))))
+	 (let ((,res (multiple-value-list 
+		      (locally ,@(remove-declare-ignore body)))))	   
 	   (when (and *print-call* (is-logging-p ,this-name *def-in-package*))
-	     (apply #'syslog-call-out (present-form ,res) (when *print-called-form-with-result* (list ,form-str))))
-	   ,res)))))
+	     (apply #'syslog-call-out (apply #'present-form ,res) (when *print-called-form-with-result* (list ,form-str))))
+	   (apply #'values ,res))))))
 
 ;(defun-ext f (x y &key z) (log-info "this f") (+ x z (g y)))
 ;(defun-ext g (x) (log-info "this g") (* x x))

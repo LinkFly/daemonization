@@ -21,7 +21,7 @@
   (chdir path)
   (log-info "new current directory: ~S." (getcwd)))
 
-(defun-ext set-umask (value)
+(defun-ext set-umask (value)  
   (let ((old-val (umask value)))
     (log-info "setted umask: ~S, Old umask: ~S." value old-val)
     old-val))
