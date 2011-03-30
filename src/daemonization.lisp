@@ -14,11 +14,6 @@
 ;(daemon-logging::f 3 4 :z 1)
 ;(defun f (x &key y) (+ x y))
 ;;;;;;;;;;;;;;;;;;;;;;;;;
-(defmacro with-silence (&body body)
-  `(with-output-to-string (*trace-output*)
-     (with-output-to-string (*standard-output*)
-       (with-output-to-string (*error-output*)
-       ,@body))))
 
 (define-constant +all-daemon-commands+ '("start" "stop" "zap" "kill" "restart" "nodaemon" "status"))
 (define-constant +conf-parameters+ '(:main-function :name :user :group :pid-file :before-parent-exit-fn :exit))
@@ -56,7 +51,7 @@
   (log-info " ... OK.")
   conf-params)
 
-(defmacro result-messages (cmd-sym result-sym alist-messages &optional extra-prompts)
+(defmacro result-messages (cmd-sym result-sym alist-messages extra-prompts print-extra-prompts)
   ;(setq alist-messages `(((,ex-ok "status" "kill") "fmt-str ~S ~A" 3434 data) (("stop" ,ex-software) "fmt-str ~S" 3434)))
   ;(setq cmd-sym 'cmd)
   ;(setq result-sym 'result)
@@ -67,9 +62,9 @@
 				  collect `(string= ,cmd-sym ,cmd))))
 		    (format nil "~A~A" 
 			    (funcall #'format nil ,fmt-str ,@args)
-			    (if ,extra-prompts (format nil " ~S" ,extra-prompts) ""))))))
+			    (if (and ,print-extra-prompts ,extra-prompts) (format nil " ~S" ,extra-prompts) ""))))))
      
-(defun-ext analized-and-print-result (result cmd conf-params &aux status extra-status)
+(defun-ext analized-and-print-result (result cmd conf-params &key print-extra-status &aux status extra-status)
   (declare (ignorable conf-params))
   (log-info "here analizing result ...")
   (if (consp result)
@@ -83,10 +78,11 @@
 			   ((+pid-file-not-found+ "start" "stop" "zap" "kill" "restart") "failed ~A - no pid file" cmd)
 			   ((ex-ok "status") "running")
 			   ((ex-unavailable "status") "not-running") 
-			   ((ex-ok "start") "success started")
+			   ((ex-ok "start") "success started (pid = ~A)" (getf extra-status :pid))
 			   ((ex-ok "stop" "zap" "kill" "restart") "success ~A" cmd) 
 			   ((ex-software "start" "stop" "zap" "kill" "restart" "status") "failed ~A" cmd))
-			  extra-status)))
+			  extra-status
+			  print-extra-status)))
     (log-info analize-str)
     (format t "~A~%" analize-str)
     (log-info " ... ok"))
@@ -97,7 +93,7 @@
      ,@(loop for (cmd-clause . forms) in cases-bodies
 	  collect `((string-equal ,cmd ,cmd-clause) ,@forms))))		    
 
-(defun-ext daemonized (daemon-command conf-params &key (on-error :call-error) &aux on-error-variants)
+(defun-ext daemonized (daemon-command conf-params &key (on-error :call-error) print-extra-status &aux on-error-variants)
   (setq on-error-variants '(:return-error :as-ignore-errors :call-error :exit-from-lisp))
   (assert (member on-error on-error-variants)
 	  () 
@@ -137,7 +133,7 @@
 					 ("nodaemon" (simple-start conf-params))
 					 ("status" (status-service conf-params)))))))	  
 	  (when (eq :parent *process-type*)
-	    (analized-and-print-result result daemon-command conf-params)
+	    (analized-and-print-result result daemon-command conf-params :print-extra-status print-extra-status)
 	    (let (status extra-status)
 	      (if (consp result)
 		  (setq status (first result)
