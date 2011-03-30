@@ -27,14 +27,13 @@
 (defun daemon-status (&aux val-list)
   (daemonization:daemonized "status" *daemon-conf* :on-error :as-ignore-errors))
 
-(princ "Tests daemonized ... ")
+(princ "Tests daemonized (with is changing of user) ... ")
 (defparameter *parent-pid* (daemonization:getpid))
 (terpri)
 (block tests 
   (flet ((return-if-child () 
 	   (when (/= *parent-pid* (daemonization:getpid))
 	     (return-from tests t))))
-    (format t "~%--- WITH DO TRY CHANGE USER --~%")
     (if (and 
 	 (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (equal (list daemon-share:ex-ok *daemon-user*)
 											     (let ((multiple-res (multiple-value-list (daemon-status))))

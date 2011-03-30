@@ -86,7 +86,7 @@
 				 ((ignore-errors (kill pid 0)) ex-ok)
 				 (t ex-unavailable))))
 		   `(,status :pid ,pid 
-			     :user ,@(when (= ex-ok status) (list :user (get-username pid)))
+			     ,@(when (= ex-ok status) (list :user (get-username pid)))
 			     :pid-file ,pid-file))))))
 
   (defun-ext kill-daemon (pid-file)
