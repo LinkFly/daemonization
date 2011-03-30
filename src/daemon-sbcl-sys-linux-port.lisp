@@ -11,13 +11,14 @@
 		#:setresgid #:setresuid 					
 		#:kill #:getpid #:getppid
 		#:chdir #:getcwd #:umask #:setsid #:dup #:dup2
-		#:wait)		
+		#:wait)
 
   (:shadowing-import-from :sb-posix
 			  #:sigusr1 #:sigchld #:sigkill
 			  #:O-RDWR #:O-RDONLY #:O-WRONLY #:O-CREAT #:O-TRUNC 
 			  #:S-IREAD #:S-IWRITE #:S-IROTH
-			  #:ioctl #:close #:syslog #:log-err #:log-info)
+			  #:ioctl #:close #:syslog #:log-err #:log-info
+			  #:stat #:stat-uid #:passwd-name #:getpwuid)
   ;;fork and open defined follow with using sb-posix:fork and sb-posix:open
   (:shadow #:open #:fork)
 
@@ -35,7 +36,8 @@
 	   #:chdir #:getcwd #:umask #:setsid #:ioctl #:close
 	   #:dup #:dup2
 	   #:tiocnotty #:syslog	   
-	   #:wait #:get-args))
+	   #:wait #:get-args
+	   #:get-username))
 
 (in-package :daemon-sbcl-sys-linux-port)
 
@@ -127,6 +129,13 @@
       (if (and sym (boundp sym))
 	  (symbol-value sym)
 	  21538)))
+
+  (defun get-username (&optional (pid (getpid)))
+    ;(getenv "USERNAME"))
+    (passwd-name 
+     (getpwuid 
+      (stat-uid
+       (stat (format nil "/proc/~A" pid))))))	
     
   ) ;progn for :daemon.as-daemon feature
 

@@ -290,8 +290,7 @@
 						     (list ,@(present-args args)))))))
 	 (when (and *print-call* (is-logging-p ,this-name *def-in-package*))
 	   (syslog-call-info ,form-str))
-;	 (let ((res (progn ,@(remove-declare-ignore body))))
-;	 (let ((,res (locally ,@body)))
+
 	 (let ((,res (locally ,@(remove-declare-ignore body))))
 	   (when (and *print-call* (is-logging-p ,this-name *def-in-package*))
 	     (apply #'syslog-call-out (present-form ,res) (when *print-called-form-with-result* (list ,form-str))))

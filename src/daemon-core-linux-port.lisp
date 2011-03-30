@@ -2,7 +2,7 @@
   (:use :cl :daemon-share :daemon-logging :daemon-features :daemon-unix-api-port :daemon-utils-linux-port)
   (:shadowing-import-from :daemon-unix-api-port #:open #:close)
   #+sbcl
-  (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt)
+  (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt #:get-username)
   #-sbcl 
   #.(error "Not implemented for non sbcl lisp systems")  
   (:export #:get-daemon-command
@@ -84,7 +84,7 @@
 	  (cur-exit (cond 
 		      ((ignore-errors (kill pid 0)) ex-ok)
 		      (t ex-unavailable))
-		    :pid pid :pid-file pid-file))))
+		    :pid pid :user (get-username pid) :pid-file pid-file))))
 
   (defun-ext kill-daemon (pid-file)
     (if (not (probe-file pid-file))

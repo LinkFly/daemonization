@@ -1,25 +1,3 @@
-#|(defmacro define-package-daemon-unix-api ()
-  `(defpackage :daemon-unix-api 
-     (:use :cl :daemon-logging :daemon-interfaces
-	   #+sbcl	   
-	   :daemon-sbcl-sys-linux-port
-	   #-sbcl
-	   (error "Not implemented for non sbcl lisp systems"))
-     (:shadow ,@(daemon-sys-linux-port:get-unix-fn-syms))
-     (:export ,@(daemon-sys-linux-port:get-unix-fn-syms)  
-	      ,@(daemon-sys-linux-port:get-unix-constants))))
-|#
-#|(macroexpand-1 '(daemon-interfaces:define-provider-package 
-    :daemon-unix-api
-  #+sbcl
-  :daemon-sbcl-sys-linux-port
-  #-sbcl 
-  #.(error "Not implemented for non sbcl lisp systems")
-  (:use (:cl :daemon-logging :daemon-interfaces)
-	:get-fn-syms-form (daemon-interfaces:get-unix-fn-syms)
-	:get-constants-form (daemon-interfaces:get-unix-constants))))
-|#
-
 (daemon-interfaces:define-provider-package 
     :daemon-unix-api-port
   #+sbcl
