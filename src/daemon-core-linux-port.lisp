@@ -36,8 +36,9 @@
 	    (exit 1))))
 
 #+daemon.as-daemon
-(defun-ext unset-global-error-handler ()
+#|(defun-ext unset-global-error-handler ()
   (setf *debugger-hook* nil))
+|#
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun-ext cur-exit (&optional (status ex-ok) &rest extra-status)

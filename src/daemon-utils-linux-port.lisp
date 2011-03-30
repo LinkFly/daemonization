@@ -131,6 +131,7 @@
 			     parent-form-before-exit
 			     child-form-after-fork
 			     child-form-before-send-success
+			     child-form-after-send-success
 			     main-child-form)
   (progn
     (log-info "preparing before fork this process ...")
@@ -155,7 +156,9 @@
      (enable-interrupt sigusr1 :default)
      (enable-interrupt sigchld :default)
      (when child-form-before-send-success (funcall child-form-before-send-success)))
+
     (kill (getppid) sigusr1)
+    (wrap-log (when child-form-after-send-success (funcall child-form-after-send-success)))
     (wrap-log (when main-child-form (funcall main-child-form)))))
 
      
