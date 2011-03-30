@@ -76,7 +76,7 @@
 			  status
 			  (((+pid-file-not-found+ "status") "not-running - no pid file")
 			   ((+pid-file-not-found+ "start" "stop" "zap" "kill" "restart") "failed ~A - no pid file" cmd)
-			   ((ex-ok "status") "running")
+			   ((ex-ok "status") "running (pid = ~A)" (getf extra-status :pid))
 			   ((ex-unavailable "status") "not-running") 
 			   ((ex-ok "start") "success started (pid = ~A)" (getf extra-status :pid))
 			   ((ex-ok "stop" "zap" "kill" "restart") "success ~A" cmd) 
