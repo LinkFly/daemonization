@@ -39,14 +39,6 @@
 	 (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:ex-ok (daemon-status)))
 	 (progn (format t "~%try restart ...~%") (daemon-cmd "restart") (return-if-child) (eql daemon-share:ex-ok (daemon-status)))
 	 (progn (format t "~%try stop ...~%")(daemon-cmd "stop") (not (eql daemon-share:ex-ok (daemon-status))))
-
-	 #|(let ((*daemon-conf* *daemon-conf*))
-	   (format t "~%--- TRY CHANGE USER --~%")
-	   (setf (getf *daemon-conf* :user) "lispuser")
-	   (and 
-	    (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:ex-ok (daemon-status)))
-	    (progn (format t "~%try stop ...~%") (daemon-cmd "stop") (not (eql daemon-share:ex-ok (daemon-status))))))
-	 |#
 	 )
 	(princ " ... Tests passed.")
 	(princ " ... Tests failed."))
