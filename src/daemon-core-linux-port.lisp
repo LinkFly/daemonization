@@ -81,10 +81,13 @@
     (if (not (probe-file pid-file))
 	(cur-exit +pid-file-not-found+ :pid-file pid-file)
 	(let ((pid (read-pid-file pid-file)))
-	  (cur-exit (cond 
-		      ((ignore-errors (kill pid 0)) ex-ok)
-		      (t ex-unavailable))
-		    :pid pid :user (get-username pid) :pid-file pid-file))))
+	  (apply #'cur-exit 
+		 (let ((status (cond 
+				 ((ignore-errors (kill pid 0)) ex-ok)
+				 (t ex-unavailable))))
+		   `(,status :pid ,pid 
+			     :user ,@(when (= ex-ok status) (list :user (get-username pid)))
+			     :pid-file ,pid-file))))))
 
   (defun-ext kill-daemon (pid-file)
     (if (not (probe-file pid-file))
