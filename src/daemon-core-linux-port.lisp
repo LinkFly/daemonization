@@ -36,15 +36,16 @@
 	    (exit 1))))
 
 #+daemon.as-daemon
-(defun-ext unset-global-error-handler ()
+#|(defun-ext unset-global-error-handler ()
   (setf *debugger-hook* nil))
+|#
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun-ext cur-exit (&optional (status ex-ok) &rest extra-status)
   ;(log-err "is bug. *fn-exit*: ~S" *fn-exit*)
   (if *fn-exit*
       (apply *fn-exit* status extra-status)
-      (apply #'exit status))) 
+      (funcall #'exit status))) 
 
 ;;;;;; Daemon commands ;;;;;;;
 #+daemon.as-daemon

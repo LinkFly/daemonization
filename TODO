@@ -1,5 +1,13 @@
 1. Изменить и дополнить README. Создать документацию.
 2. Разрешить неоднозначности связанные с отсутствием/наличием задаваемых пользователя/группы и устанавливаемых ограничений (в restruct-rights).
-3. 
+3. Выяснить почему в syslog появляются следующие записи, хотя логирующие ф-ии были изменены:
+(:DAEMONIZATION :pid 24738  :DAEMON-UNIX-API-PORT     :TRACE-FN GETPID :CALL (GETPID))
+(:DAEMONIZATION :pid 24738  :DAEMON-UNIX-API-PORT     :TRACE-FN GETPID :RESULT 24738 :CALLED-FORM (GETPID))
+(:DAEMONIZATION :ERROR  :pid 24740  :DAEMON-CORE-LINUX-PORT   :CHILD-PROC "#<SB-SYS:FD-STREAM for \"standard output\" {B6282E9}> is closed")
+(:DAEMONIZATION :pid 24740  :DAEMON-UNIX-API-PORT     :CHILD-PROC :TRACE-FN EXIT :CALL (EXIT 1))
+(:DAEMONIZATION :ERROR  :pid 24740  :DAEMON-CORE-LINUX-PORT   :CHILD-PROC "#<SB-SYS:FD-STREAM for \"standard output\" {B6282E9}> is closed")
+(:DAEMONIZATION :pid 24740  :DAEMON-UNIX-API-PORT     :CHILD-PROC :TRACE-FN EXIT :CALL (EXIT 1))
+(:DAEMONIZATION :pid 24740  :DAEMON-CORE-LINUX-PORT   :CHILD-PROC :TRACE-FN EXIT   "Stop  daemon")
+(:DAEMONIZATION :pid 24740  :DAEMON-CORE-LINUX-PORT   :CHILD-PROC :TRACE-FN CUR-EXIT   :CALL (CUR-EXIT 0 &REST (:values)))
 
 
