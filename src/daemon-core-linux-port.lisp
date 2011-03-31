@@ -45,7 +45,7 @@
   ;(log-err "is bug. *fn-exit*: ~S" *fn-exit*)
   (if *fn-exit*
       (apply *fn-exit* status extra-status)
-      (apply #'exit status))) 
+      (funcall #'exit status))) 
 
 ;;;;;; Daemon commands ;;;;;;;
 #+daemon.as-daemon
