@@ -11,10 +11,10 @@
   :depends-on (#+sbcl :sb-posix
 	       #-sbcl #.(error "Not implemented for non sbcl lisp systems"))
   :components ((:module "src"
-			:components ((:file "daemon-share")
-				     (:file "daemon-logging")
-				     (:file "daemon-features")
-				     (:file "daemon-interfaces" :depends-on ("daemon-share"))
+			:components ((:file "daemon-features")
+				     (:file "daemon-share")
+				     (:file "daemon-logging")				     
+				     (:file "daemon-interfaces" :depends-on ("daemon-features" "daemon-share"))
 				     #+(and linux sbcl) 
 				     (:file "daemon-sbcl-sys-linux-port" :depends-on ("daemon-share" "daemon-logging" "daemon-features"))
 				     #+linux 

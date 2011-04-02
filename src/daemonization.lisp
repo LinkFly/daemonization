@@ -1,7 +1,7 @@
 (defpackage :daemonization 
   (:use :cl :daemon-share :daemon-logging :daemon-core-port)
-  (:import-from :daemon-utils-port #:exit #:get-args #:getpid)
-  (:export #:daemonized #:get-args #:getpid))
+  (:import-from :daemon-utils-port #:exit #:get-args #:getpid #:recreate-file-allow-write-other)
+  (:export #:daemonized #:get-args #:getpid #:*fn-log-info* #:*fn-log-err* #:recreate-file-allow-write-other))
 
 (in-package :daemonization)
 
@@ -74,13 +74,19 @@
   (let ((analize-str
 	 (result-messages cmd 
 			  status
-			  (((+pid-file-not-found+ "status") "not-running - no pid file")
+			  (((ex-software "start") "failed ~A~A" cmd (if (and (getf extra-status :exit-code) 
+									     (= (getf extra-status :exit-code) 
+										ex-cantcreate))
+									(format nil " - pid file already exists ~A"
+										(getf conf-params :pid-file))
+									""))
+			   ((+pid-file-not-found+ "status") "not-running - no pid file")
 			   ((+pid-file-not-found+ "start" "stop" "zap" "kill" "restart") "failed ~A - no pid file" cmd)
 			   ((ex-ok "status") "running (pid = ~A)" (getf extra-status :pid))
 			   ((ex-unavailable "status") "not-running") 
 			   ((ex-ok "start") "success started (pid = ~A)" (getf extra-status :pid))
 			   ((ex-ok "stop" "zap" "kill" "restart") "success ~A" cmd) 
-			   ((ex-software "start" "stop" "zap" "kill" "restart" "status") "failed ~A" cmd))
+			   ((ex-software "stop" "zap" "kill" "restart" "status") "failed ~A" cmd))
 			  extra-status
 			  print-extra-status)))
     (log-info analize-str)
@@ -143,6 +149,7 @@
 		(exit status))
 	      (values status extra-status)))))
     (error (err)
+      (unless (eq :parent *process-type*) (error err))
       (log-err "~A~%" err)
       (format t "ERROR: ~A~%" err)
       (case on-error

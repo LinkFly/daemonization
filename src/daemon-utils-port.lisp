@@ -9,7 +9,8 @@
 	   #:isolate-process
 	   #:exit
 	   #:get-args
-	   #:getpid))	   
+	   #:getpid
+	   #:recreate-file-allow-write-other))	   
 
 (in-package :daemon-utils-port)
 

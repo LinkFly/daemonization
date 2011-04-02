@@ -12,6 +12,7 @@
 		#:kill #:getpid #:getppid
 		#:chdir #:getcwd #:umask #:setsid #:dup #:dup2
 		#:wait)
+		
 
   (:shadowing-import-from :sb-posix
 			  #:sigusr1 #:sigchld #:sigkill
@@ -37,7 +38,8 @@
 	   #:dup #:dup2
 	   #:tiocnotty #:syslog	   
 	   #:wait #:get-args
-	   #:get-username))
+	   #:get-username
+	   #:recreate-file-allow-write-other))
 
 (in-package :daemon-sbcl-sys-linux-port)
 
@@ -135,7 +137,18 @@
     (passwd-name 
      (getpwuid 
       (stat-uid
-       (stat (format nil "/proc/~A" pid))))))	
-    
+       (stat (format nil "/proc/~A" pid))))))	  
+
   ) ;progn for :daemon.as-daemon feature
+
+(defun recreate-file-allow-write-other (file &aux fd)    
+  "Function recreate file with append permissions on writing for other users.
+(Cauting! This is function using for root tests and need for switch user (then writing logs with new user).
+He not defining as (defun-ext ...). Cauting2!!! Function is not must using logger system (not must using
+defining functions defining with defun-ext)"
+
+  (let ((pred-umask (umask 0)))
+    (setq fd (open file (boole boole-ior O-RDWR O-CREAT) #b110110110))
+    (close fd)
+    (umask pred-umask)))
 
