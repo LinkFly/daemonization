@@ -1,6 +1,0 @@
-1. Accomplished README.
-2. Upgrade TODO.
-3. Change order parameters in daemonized
-4. Export get-daemon-log-list
-5. Bug fix with none correct correct on failed stop with exists pid file.
-6. 
