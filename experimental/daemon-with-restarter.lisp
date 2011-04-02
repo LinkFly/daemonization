@@ -22,8 +22,7 @@
       (asdf:load-system :daemonization)
       (asdf:load-system :restart-process)))
 
-(daemonization:daemonized (second (daemonization:get-args))
-			  (list 
+(daemonization:daemonized (list 
 			   :pid-file nil ;for correct restarting
 			   :main-function #'(lambda () 
 					      ;; Here your initilization code, as example - loading start swank server script
@@ -37,6 +36,7 @@
 						      (unless (= status sb-posix:sigchld)
 							(restart-process:restart-process-on-stops pid
 												  :revision-timeout 3))))
+			  (second (daemonization:get-args))
 			  :on-error :exit-from-lisp)
 
 

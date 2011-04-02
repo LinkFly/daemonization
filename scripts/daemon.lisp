@@ -19,4 +19,4 @@
 			 :name conf-file
 			 :type nil
 			 :directory (pathname-directory *load-pathname*))))
-  (daemonization:daemonized command conf-file :on-error :exit-from-lisp))
+  (daemonization:daemonized conf-file command :on-error :exit-from-lisp))

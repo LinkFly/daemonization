@@ -57,11 +57,11 @@
     (:root (get-full-pathname *root-syslog-filename*))))
 		 
 (defun daemon-cmd (cmd)
-  (apply #'daemonization:daemonized
-	 cmd
+  (apply #'daemonization:daemonized	 
 	 (case *test-mode*
-	   (:user (list *daemon-conf* :on-error :as-ignore-errors))
-	   (:root (list *root-daemon-conf* 
+	   (:user (list *daemon-conf* cmd 
+			:on-error :as-ignore-errors))
+	   (:root (list *root-daemon-conf* cmd 
 			:print-extra-status t 
 			:on-error :as-ignore-errors)))))
 

@@ -1,7 +1,7 @@
 (defpackage :daemonization 
   (:use :cl :daemon-share :daemon-logging :daemon-core-port)
   (:import-from :daemon-utils-port #:exit #:get-args #:getpid #:recreate-file-allow-write-other)
-  (:export #:daemonized #:get-args #:getpid #:*fn-log-info* #:*fn-log-err* #:recreate-file-allow-write-other))
+  (:export #:daemonized #:get-daemon-log-list #:get-args #:getpid #:*fn-log-info* #:*fn-log-err* #:recreate-file-allow-write-other))
 
 (in-package :daemonization)
 
@@ -99,7 +99,7 @@
      ,@(loop for (cmd-clause . forms) in cases-bodies
 	  collect `((string-equal ,cmd ,cmd-clause) ,@forms))))		    
 
-(defun-ext daemonized (daemon-command conf-params &key (on-error :call-error) print-extra-status &aux on-error-variants)
+(defun-ext daemonized (conf-params daemon-command &key (on-error :call-error) print-extra-status &aux on-error-variants)
   (setq on-error-variants '(:return-error :as-ignore-errors :call-error :exit-from-lisp))
   (assert (member on-error on-error-variants)
 	  () 
@@ -149,7 +149,7 @@
 		(exit status))
 	      (values status extra-status)))))
     (error (err)
-      (unless (eq :parent *process-type*) (error err))
+      (when (eq :child *process-type*) (error err))
       (log-err "~A~%" err)
       (format t "ERROR: ~A~%" err)
       (case on-error
