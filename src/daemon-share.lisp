@@ -1,8 +1,10 @@
 (defpackage daemon-share 
   (:use :cl)
-  (:export #:define-constant #:*process-type* #:*fn-exit* #:ex-ok #:ex-software #:ex-unavailable
-	   #:+pid-file-not-found+
-	   #:+system-name+ #:get-system-path #:absolute-path-p #:ensure-absolute-path #:ex-general))
+  (:export #:define-constant #:*process-type* #:*fn-exit* 
+	   #:ex-ok #:ex-general #:ex-software #:ex-unavailable #:ex-cantcreate
+	   #:+pid-file-not-found+ #:+pid-file-exists+
+	   #:+system-name+ #:get-system-path #:absolute-path-p #:ensure-absolute-path
+	   #:call-file-exists-error #:file-exists-error))
 
 (in-package :daemon-share)
 
@@ -20,8 +22,11 @@
 (defconstant ex-ok 0)
 (defconstant ex-general 1)
 (defconstant ex-software 70)
+(defconstant ex-cantcreate 73)
 (defconstant ex-unavailable 69)
+
 (defconstant +pid-file-not-found+ 256)
+(defconstant +pid-file-exists+ 257)
  
 (defun get-system-path ()
   (make-pathname :defaults
@@ -38,3 +43,13 @@
       (make-pathname :defaults (get-system-path)
 		     :name path)
       path))
+
+(define-condition file-exists-error (error) ((pathname :initarg :pathname :accessor file-exists-error-pathname)))
+
+(defun call-file-exists-error (pathname)
+  (error (make-condition 'file-exists-error
+			 :pathname pathname
+			 :format-control "File already exists: ~S"
+			 :format-arguments (list pathname))))
+
+

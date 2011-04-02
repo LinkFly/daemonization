@@ -4,6 +4,7 @@
 	   #:*print-log-info* #:*print-log-err*
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
 	   #:*print-call #:*print-called-form-with-result*
+	   #:*print-pid*
 	   #:*fn-log-info* #:*fn-log-err* #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
 	   #:*print-log-datetime* #:*fn-log-pid*))
@@ -23,7 +24,8 @@
 (defparameter *disabled-layers-logging* nil)
 (defparameter *log-prefix* nil)
 (defparameter *print-log-datetime* nil)
-(defparameter *print-trace-function* t)
+(defparameter *print-trace-function* nil)
+(defparameter *print-pid* t)
 (defparameter *simple-log* nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -105,7 +107,7 @@
 	  (if *print-log-datetime* 
 	      (format nil " ~S " (get-datetime))
 	      "")
-	  (if *fn-log-pid*
+	  (if (and *print-pid* *fn-log-pid*)
 	      (format nil " ~A " (funcall *fn-log-pid*))
 	      "")
 	  (if *print-log-layer* 

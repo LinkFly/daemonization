@@ -1,8 +1,9 @@
 (defpackage :daemon-utils-linux-port
   (:use :cl :daemon-logging :daemon-unix-api-port)
   (:shadowing-import-from :daemon-unix-api-port #:open #:close)
+  (:import-from :daemon-share #:call-file-exists-error)
   #+sbcl	   
-  (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt #:get-args)
+  (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt #:get-args #:recreate-file-allow-write-other)
   #-sbcl 
   #.(error "Not implemented for non sbcl lisp systems")
   (:import-from :daemon-share #:*process-type* #:ex-ok #:ex-software)
@@ -12,7 +13,8 @@
 	   #:set-grant-listen-privileged-ports #:linux-change-user
 	   #:fork-this-process #:create-pid-file #:read-pid-file
 	   #:fork-and-parent-exit-on-child-signal
-	   #:exit #:get-args #:getpid))   
+	   #:exit #:get-args #:getpid
+	   #:recreate-file-allow-write-other))   
 
 (in-package :daemon-utils-linux-port)
 
@@ -69,7 +71,7 @@
 	(dup2 err-fd 2))))
 	
 
-  (defun-ext start-new-session ()    
+  (defun-ext start-new-session ()
     (setsid))
 
   (defun-ext read-pid-file (pid-file)
@@ -77,6 +79,8 @@
       (read s)))
 
   (defun-ext create-pid-file (pid-file)    
+    (when (probe-file pid-file)
+      (call-file-exists-error pid-file))
     (with-open-file (out pid-file
 			 :direction :output
 			 :if-exists :error
@@ -110,18 +114,38 @@
   ) ;feature :daemon.listen-privileged-ports
 
 #+daemon.as-daemon
+(let (status exit-code)
+  (defun-ext get-status () status)
+  (defun-ext get-exit-code () exit-code)
+  (defun-ext clear-status-and-exit-code ()
+    (setf status nil exit-code nil))
+  (defun-ext signal-handler (sig info context)
+    (declare (ignore info context))
+    (setf status sig))
+  (defun-ext sigchld-handler (sig info context)
+    (declare (ignore info context))
+    (setf status sig)
+    (setf exit-code 
+	  (ldb (byte 8 8)
+	       (second (multiple-value-list (wait)))))))
+
+#+daemon.as-daemon
 (defun-ext fork-and-parent-exit-on-child-signal (&optional fn-before-exit fn-exit &aux pid)  
+  (clear-status-and-exit-code)
   (unless (= (setf pid (fork)) 0)
     (setf *process-type* :parent)
     (loop 
        while (null (get-status))
        do (sleep 0.1))
     (when fn-before-exit (funcall fn-before-exit pid (get-status)))
-    (funcall (or fn-exit #'exit)
-	     (if (= (get-status) sigusr1)
-		 ex-ok
-		 ex-software)
-	     :pid pid))
+    (let ((status (if (= (get-status) sigusr1)
+		       ex-ok
+		       ex-software))
+	  (exit-code (get-exit-code)))
+      (clear-status-and-exit-code)
+      (if fn-exit 
+	  (funcall fn-exit status :pid pid :exit-code exit-code)
+	  (funcall #'exit status))))
   (setf *process-type* :child))
 
 #+daemon.as-daemon
@@ -134,31 +158,25 @@
 			     child-form-after-send-success
 			     main-child-form)
   (progn
-    (log-info "preparing before fork this process ...")
-    (let (status)
-      (defun-ext get-status () status)
-      (defun-ext signal-handler (sig info context)
-	(declare (ignore info context))
-	(setf status sig)))
+    (log-info "preparing before fork this process ...")    
       
     (wrap-log (enable-interrupt sigusr1 #'signal-handler)
-	      (enable-interrupt sigchld #'(lambda (sig info context)					     
-					    (signal-handler sig info context)
-					    (wait)))
+	      (enable-interrupt sigchld #'sigchld-handler)
 	      (when parent-form-before-fork (funcall parent-form-before-fork)))
      
     (log-info " ... OK(preparing before fork).")
      
-    (wrap-log (fork-and-parent-exit-on-child-signal parent-form-before-exit fn-exit))
-
     (wrap-log 
+     (fork-and-parent-exit-on-child-signal parent-form-before-exit fn-exit)
      (when child-form-after-fork (funcall child-form-after-fork))
      (enable-interrupt sigusr1 :default)
      (enable-interrupt sigchld :default)
      (when child-form-before-send-success (funcall child-form-before-send-success)))
 
     (kill (getppid) sigusr1)
-    (wrap-log (when child-form-after-send-success (funcall child-form-after-send-success)))
-    (wrap-log (when main-child-form (funcall main-child-form)))))
+
+    (wrap-log (when child-form-after-send-success (funcall child-form-after-send-success))
+	      (when main-child-form (funcall main-child-form)))))
+
 
      

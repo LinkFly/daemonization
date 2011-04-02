@@ -24,16 +24,19 @@
 ;;;;;;;;;;;;;;;;;;;
 
 #+daemon.as-daemon
-(defun-ext set-global-error-handler ()
+(defun-ext set-global-error-handler ()  
   (setf *debugger-hook*
 	#'(lambda (condition x)
-	    (declare (ignore x))
+	    (declare (ignore x))	    
 	    (let ((err (with-output-to-string (out)
 			 (let ((*print-escape* nil))
 			   (print-object condition out)))))
 	      (print err *error-output*)
 	      (log-err err))
-	    (exit 1))))
+	    (exit 
+	     (typecase condition
+	       (file-exists-error ex-cantcreate)
+	       (t ex-software))))))
 
 #+daemon.as-daemon
 #|(defun-ext unset-global-error-handler ()
