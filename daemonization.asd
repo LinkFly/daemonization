@@ -12,21 +12,19 @@
 	       #-sbcl #.(error "Not implemented for non sbcl lisp systems"))
   :components ((:module "src"
 			:components ((:file "daemon-features")
-				     (:file "daemon-share")
 				     (:file "daemon-logging")				     
-				     (:file "daemon-interfaces" :depends-on ("daemon-features" "daemon-share"))
+				     (:file "daemon-share" :depends-on ("daemon-features" "daemon-logging"))
+				     (:file "daemon-interfaces" :depends-on ("daemon-share"))
 				     #+(and linux sbcl) 
-				     (:file "daemon-sbcl-sys-linux-port" :depends-on ("daemon-share" "daemon-logging" "daemon-features"))
+				     (:file "daemon-sbcl-sys-linux-port" :depends-on ("daemon-share"))
 				     #+linux 
-				     (:file "daemon-unix-api-port" :depends-on ("daemon-logging" "daemon-interfaces" 
+				     (:file "daemon-unix-api-port" :depends-on ("daemon-share" "daemon-interfaces" 
 											    #+sbcl
 											    "daemon-sbcl-sys-linux-port"
 											    #-sbcl 
 											    #.(error "Not implemented for non sbcl lisp systems")))
 				     #+linux 
 				     (:file "daemon-utils-linux-port" :depends-on ("daemon-share" 
-										   "daemon-logging"
-										   "daemon-features" 
 										   #+sbcl
 										   "daemon-sbcl-sys-linux-port"
 										   #-sbcl 
@@ -34,8 +32,6 @@
 										   "daemon-unix-api-port"))
 				     #+linux 
 				     (:file "daemon-core-linux-port" :depends-on ("daemon-share"
-										  "daemon-logging" 
-										  "daemon-features" 
 										  #+sbcl
 										   "daemon-sbcl-sys-linux-port"
 										   #-sbcl 
@@ -43,15 +39,13 @@
 										  "daemon-unix-api-port"
 										  "daemon-utils-linux-port"))
 
-				     (:file "daemon-utils-port" :depends-on ("daemon-logging" 
-									     "daemon-features"
+				     (:file "daemon-utils-port" :depends-on ("daemon-share" 
 									     #+linux "daemon-utils-linux-port"
 									     #-linux (error "Not implemented on none Linux")
 									     ))
-				     (:file "daemon-core-port" :depends-on ("daemon-logging" 
-									    "daemon-features"
+				     (:file "daemon-core-port" :depends-on ("daemon-share" 
 									    "daemon-utils-port"
 									     #+linux "daemon-core-linux-port"
 									     #-linux (error "Not implemented on none Linux")
 									     ))
-				     (:file "daemonization" :depends-on ("daemon-share" "daemon-logging" "daemon-core-port" "daemon-utils-port"))))))
+				     (:file "daemonization" :depends-on ("daemon-share" "daemon-core-port" "daemon-utils-port"))))))

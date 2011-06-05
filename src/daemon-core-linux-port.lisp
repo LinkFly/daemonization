@@ -1,5 +1,5 @@
 (defpackage :daemon-core-linux-port
-  (:use :cl :daemon-share :daemon-logging :daemon-features :daemon-unix-api-port :daemon-utils-linux-port)
+  (:use :cl :daemon-share :daemon-unix-api-port :daemon-utils-linux-port)
   (:shadowing-import-from :daemon-unix-api-port #:open #:close)
   #+sbcl
   (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt #:get-username)

@@ -1,10 +1,10 @@
-(daemon-interfaces:define-provider-package 
+(daemon-interfaces:define-provider-package
     :daemon-unix-api-port
   #+sbcl
   :daemon-sbcl-sys-linux-port
   #-sbcl 
   #.(error "Not implemented for non sbcl lisp systems")
-  (:use (:cl :daemon-logging :daemon-interfaces)
+  (:use (:cl :daemon-share :daemon-interfaces)
    :get-fn-syms-form (daemon-interfaces:get-unix-fn-syms)
    :get-constants-form (daemon-interfaces:get-unix-constants)))
 

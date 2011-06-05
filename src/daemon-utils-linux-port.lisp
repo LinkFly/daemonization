@@ -1,12 +1,10 @@
 (defpackage :daemon-utils-linux-port
-  (:use :cl :daemon-logging :daemon-unix-api-port)
+  (:use :cl :daemon-share :daemon-unix-api-port)
   (:shadowing-import-from :daemon-unix-api-port #:open #:close)
-  (:import-from :daemon-share #:call-file-exists-error)
   #+sbcl	   
   (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt #:get-args #:recreate-file-allow-write-other)
   #-sbcl 
   #.(error "Not implemented for non sbcl lisp systems")
-  (:import-from :daemon-share #:*process-type* #:ex-ok #:ex-software)
   (:export #:set-current-dir #:set-umask
 	   #:detach-from-tty #:switch-to-slave-pseudo-terminal #:start-new-session
 	   #:preparation-before-grant-listen-privileged-ports	   

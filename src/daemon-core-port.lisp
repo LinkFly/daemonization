@@ -1,7 +1,6 @@
 (defpackage :daemon-core-port   
   (:use :cl 
-	:daemon-logging
-	:daemon-features
+	:daemon-share
 	:daemon-utils-port
 	#-linux (error "Package DAEMON-CORE-PORT not implemented on not Linux")
 	#+linux

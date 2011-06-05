@@ -1,5 +1,5 @@
 (defpackage :daemonization 
-  (:use :cl :daemon-share :daemon-logging :daemon-core-port)
+  (:use :cl :daemon-share :daemon-core-port)
   (:import-from :daemon-utils-port #:exit #:get-args #:getpid #:recreate-file-allow-write-other)
   (:export #:daemonized #:get-daemon-log-list #:get-args #:getpid #:*fn-log-info* #:*fn-log-err* #:recreate-file-allow-write-other))
 

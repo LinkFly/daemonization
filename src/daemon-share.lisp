@@ -1,10 +1,20 @@
 (defpackage daemon-share 
-  (:use :cl)
+  (:use :cl :daemon-features :daemon-logging)
   (:export #:define-constant #:*process-type* #:*fn-exit* 
 	   #:ex-ok #:ex-general #:ex-software #:ex-unavailable #:ex-cantcreate
 	   #:+pid-file-not-found+ #:+pid-file-exists+
 	   #:+system-name+ #:get-system-path #:absolute-path-p #:ensure-absolute-path
-	   #:call-file-exists-error #:file-exists-error))
+	   #:call-file-exists-error #:file-exists-error
+	   ;;; logging
+	   #:log-info #:log-err #:defun-ext #:wrap-log
+	   #:*print-log-info* #:*print-log-err*
+	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
+	   #:*print-call #:*print-called-form-with-result*
+	   #:*print-pid*
+	   #:*fn-log-info* #:*fn-log-err* #:*log-prefix*
+	   #:add-daemon-log #:get-daemon-log-list
+	   #:*print-log-datetime* #:*fn-log-pid*
+	   ))
 
 (in-package :daemon-share)
 

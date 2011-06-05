@@ -1,8 +1,6 @@
 (defpackage :daemon-sbcl-sys-linux-port
   (:use :cl 	
 	:daemon-share
-	:daemon-logging
-	
 	:sb-alien
         :sb-unix)  
 
