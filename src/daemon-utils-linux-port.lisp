@@ -97,22 +97,27 @@
   ) ;feature :daemon.as-daemon
 
 #+daemon.change-user
-(defun-ext linux-change-user (name &optional group)
-  (let* ((passwd (getpwnam name))
-	 (gid (if group
-		  (group-gid (wrap-log (getgrnam group)))
-		  (passwd-gid passwd)))
-	 (uid (passwd-uid passwd)))
-    (setresgid gid gid gid)
-    (initgroups name gid)
-    (setresuid uid uid uid)))	;feature :daemon.change-user
+(defun-ext linux-change-user (&key name group)
+  (cond
+    ((and group (null name))
+     (setf name (get-username)))
+    ((and (null group) (null name))
+     (return-from linux-change-user))
+    (t
+     (let* ((passwd (getpwnam name))
+	    (gid (if group
+		     (group-gid (wrap-log (getgrnam group)))
+		     (passwd-gid passwd)))
+	    (uid (passwd-uid passwd)))
+       (setresgid gid gid gid)
+       (initgroups name gid)
+       (setresuid uid uid uid)))))	;feature :daemon.change-user
 ;;;;;;;;
 
 #+daemon.listen-privileged-ports
 (progn 
   (defun-ext preparation-before-grant-listen-privileged-ports ()
-    (prctl +PR_SET_KEEPCAPS+ 1)
-    )
+    (prctl +PR_SET_KEEPCAPS+ 1))
 
   (defun-ext set-grant-listen-privileged-ports ()
     (let ((cap_p (cap-from-text "CAP_NET_BIND_SERVICE=ep")))

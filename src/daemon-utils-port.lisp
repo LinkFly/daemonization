@@ -13,9 +13,9 @@
 
 (in-package :daemon-utils-port)
 
-(defun-ext change-user (name &optional group)
+(defun-ext change-user (&key user group)
   #-linux (error "CHANGE-USER not implemented on not Linux")
-  #+linux (linux-change-user name group))
+  #+linux (linux-change-user :name user :group group))
 
 (defun-ext preparation-before-grant ()
   #+linux 
@@ -31,9 +31,9 @@
 
 (defun-ext restrict-rights (&key new-user new-group)  
   #+daemon.change-user
-  (when new-user
+  (when (or new-user new-group)
     (preparation-before-grant)    
-    (change-user new-user new-group)
+    (change-user :user new-user :group new-group)
     (set-grant)))
 
 #+daemon.as-daemon
