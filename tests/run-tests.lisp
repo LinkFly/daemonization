@@ -11,16 +11,16 @@
     (asdf:load-system :daemonization-test)))
 
 (defun run-tests (&aux parent-pid)
-  (setf parent-pid (daemonization-test:getpid))
+  (setf parent-pid (daemonization-test:get-proc-id))
   (daemonization-test:run-tests)
-  (when (= parent-pid (daemonization-test:getpid))
+  (when (= parent-pid (daemonization-test:get-proc-id))
     (quit)))
 
 (defun root-run-tests (username &aux parent-pid)
-  (setf parent-pid (daemonization-test:getpid))
+  (setf parent-pid (daemonization-test:get-proc-id))
   (when (string= "" username)
     (error "ERROR: need username"))
   (daemonization-test:root-run-tests username)
-  (when (= parent-pid (daemonization-test:getpid))
+  (when (= parent-pid (daemonization-test:get-proc-id))
     (quit)))
     

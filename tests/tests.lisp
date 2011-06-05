@@ -1,6 +1,6 @@
 (defpackage :daemonization-test 
   (:use :cl :daemonization :daemonization-utils)
-  (:export #:run-tests #:root-run-tests #:getpid))
+  (:export #:run-tests #:root-run-tests #:get-proc-id))
 
 (in-package :daemonization-test)
 
@@ -90,7 +90,7 @@
    *standard-output*))
 
 (defun run-tests () 			 
-  (let* ((parent-pid (getpid))
+  (let* ((parent-pid (get-proc-id))
 	 (*test-mode* :user)
 	 (*standard-output* (open-broadcast-log-stream))
 	 (*fn-log-info* #'print-syslog)
@@ -100,7 +100,7 @@
     (terpri)
     (block tests 
       (flet ((return-if-child () 
-	       (when (/= parent-pid (getpid))
+	       (when (/= parent-pid (get-proc-id))
 		 (return-from tests t))))
 	(if (and 
 	     (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:ex-ok (daemon-status)))
@@ -120,7 +120,7 @@
       )))
 
 (defun root-run-tests (username)
-  (let* ((parent-pid (getpid))
+  (let* ((parent-pid (get-proc-id))
 	 (*test-mode* :root)
 	 (*standard-output* (open-broadcast-log-stream))
 	 (*fn-log-info* #'print-syslog)
@@ -140,7 +140,7 @@
     (terpri)
     (block tests 
       (flet ((return-if-child () 
-	       (when (/= parent-pid (getpid))
+	       (when (/= parent-pid (get-proc-id))
 		 (return-from tests t))))
 	(if (and 	   
 	     (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:ex-ok (daemon-status)))
