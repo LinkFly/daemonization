@@ -1,5 +1,5 @@
 (defpackage :daemonization-test 
-  (:use :cl :daemonization)
+  (:use :cl :daemonization :daemonization-utils)
   (:export #:run-tests #:root-run-tests #:getpid))
 
 (in-package :daemonization-test)
@@ -77,7 +77,7 @@
 ;;test
 ;    (sb-posix:umask 0)
 ;;end test
-    (daemonization:recreate-file-allow-write-other (get-syslog-file))))
+    (recreate-file-allow-write-other (get-syslog-file))))
 
 (defun print-syslog (fmt-str &rest args)
   (with-open-file (syslog-stream (get-syslog-file)
@@ -90,17 +90,17 @@
    *standard-output*))
 
 (defun run-tests () 			 
-  (let* ((parent-pid (daemonization:getpid))
+  (let* ((parent-pid (getpid))
 	 (*test-mode* :user)
 	 (*standard-output* (open-broadcast-log-stream))
-	 (daemonization:*fn-log-info* #'print-syslog)
-	 (daemonization:*fn-log-err* #'print-syslog))
+	 (*fn-log-info* #'print-syslog)
+	 (*fn-log-err* #'print-syslog))
     (ensure-no-syslog-file)
     (princ "Tests daemonized ... ")
     (terpri)
     (block tests 
       (flet ((return-if-child () 
-	       (when (/= parent-pid (daemonization:getpid))
+	       (when (/= parent-pid (getpid))
 		 (return-from tests t))))
 	(if (and 
 	     (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:ex-ok (daemon-status)))
@@ -120,11 +120,11 @@
       )))
 
 (defun root-run-tests (username)
-  (let* ((parent-pid (daemonization:getpid))
+  (let* ((parent-pid (getpid))
 	 (*test-mode* :root)
 	 (*standard-output* (open-broadcast-log-stream))
-	 (daemonization:*fn-log-info* #'print-syslog)
-	 (daemonization:*fn-log-err* #'print-syslog))
+	 (*fn-log-info* #'print-syslog)
+	 (*fn-log-err* #'print-syslog))
     (ensure-no-syslog-file)
     (recreate-root-syslog-file)
 ;;test
@@ -140,7 +140,7 @@
     (terpri)
     (block tests 
       (flet ((return-if-child () 
-	       (when (/= parent-pid (daemonization:getpid))
+	       (when (/= parent-pid (getpid))
 		 (return-from tests t))))
 	(if (and 	   
 	     (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:ex-ok (daemon-status)))

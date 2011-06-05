@@ -48,4 +48,5 @@
 									     #+linux "daemon-core-linux-port"
 									     #-linux (error "Not implemented on none Linux")
 									     ))
-				     (:file "daemonization" :depends-on ("daemon-share" "daemon-core-port" "daemon-utils-port"))))))
+				     (:file "daemonization" :depends-on ("daemon-share" "daemon-core-port" "daemon-utils-port"))
+				     (:file "daemonization-utils" :depends-on ("daemon-share" "daemon-core-port" "daemon-utils-port"))))))

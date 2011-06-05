@@ -27,7 +27,6 @@
   "Must be nil or :parent or :child. Needed for daemonize (there reading) and fork (there set)")
 
 (defparameter *fn-exit* nil "Function for none local exit. Must be have parameters (&optional (status ex-ok) &rest extra-status).")
-;(function-lambda-expression *fn-exit*)
 
 (defconstant ex-ok 0)
 (defconstant ex-general 1)
@@ -48,7 +47,6 @@
   (eq :absolute (first (pathname-directory pathname))))
 
 (defun ensure-absolute-path (path)
-;(setq path #P"/media/WORK_PARTITION/work_dir/web-projects/dynserv/asdf-systems/daemonization/my-daemon-exp")
   (if (not (absolute-path-p path))
       (make-pathname :defaults (get-system-path)
 		     :name path)
