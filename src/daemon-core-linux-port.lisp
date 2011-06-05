@@ -2,7 +2,7 @@
   (:use :cl :daemon-share :daemon-unix-api-port :daemon-utils-linux-port)
   (:shadowing-import-from :daemon-unix-api-port #:open #:close)
   #+sbcl
-  (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt #:get-username)
+  (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt)
   #-sbcl 
   #.(error "Not implemented for non sbcl lisp systems")  
   (:export #:get-daemon-command

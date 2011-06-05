@@ -2,7 +2,9 @@
   (:use :cl :daemon-share :daemon-unix-api-port)
   (:shadowing-import-from :daemon-unix-api-port #:open #:close)
   #+sbcl	   
-  (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt #:get-args #:recreate-file-allow-write-other)
+  (:import-from :daemon-sbcl-sys-linux-port 
+		#:enable-interrupt #:get-args
+		#:stat #:stat-uid #:passwd-name #:getpwuid)
   #-sbcl 
   #.(error "Not implemented for non sbcl lisp systems")
   (:export #:set-current-dir #:set-umask
@@ -12,7 +14,8 @@
 	   #:fork-this-process #:create-pid-file #:read-pid-file
 	   #:fork-and-parent-exit-on-child-signal
 	   #:exit #:get-args #:getpid
-	   #:recreate-file-allow-write-other))   
+	   #:recreate-file-allow-write-other
+	   #:get-username))   
 
 (in-package :daemon-utils-linux-port)
 
@@ -84,6 +87,13 @@
 			 :if-exists :error
 			 :if-does-not-exist :create)
       (write (getpid) :stream out)))
+
+  (defun-ext get-username (&optional (pid (getpid)))
+    ;(getenv "USERNAME"))
+    (passwd-name 
+     (getpwuid 
+      (stat-uid
+       (stat (format nil "/proc/~A" pid))))))
   ) ;feature :daemon.as-daemon
 
 #+daemon.change-user
@@ -175,6 +185,17 @@
 
     (wrap-log (when child-form-after-send-success (funcall child-form-after-send-success))
 	      (when main-child-form (funcall main-child-form)))))
+
+(defun recreate-file-allow-write-other (file &aux fd)    
+  "Function recreate file with append permissions on writing for other users.
+(Cauting! This is function using for root tests and need for switch user (then writing logs with new user).
+He not defining as (defun-ext ...). Cauting2!!! Function is not must using logger system (not must using
+defining functions defining with defun-ext)"
+  (let ((*disabled-functions-logging* '(umask open close)))
+    (let ((pred-umask (umask 0)))
+      (setq fd (open file (boole boole-ior O-RDWR O-CREAT) #b110110110))
+      (close fd)
+      (umask pred-umask))))
 
 
      

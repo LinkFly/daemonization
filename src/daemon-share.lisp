@@ -14,6 +14,8 @@
 	   #:*fn-log-info* #:*fn-log-err* #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
 	   #:*print-log-datetime* #:*fn-log-pid*
+	   #:*disabled-functions-logging*
+	   #:*disabled-layers-logging*
 	   ))
 
 (in-package :daemon-share)

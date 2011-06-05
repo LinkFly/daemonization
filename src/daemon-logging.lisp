@@ -7,7 +7,9 @@
 	   #:*print-pid*
 	   #:*fn-log-info* #:*fn-log-err* #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
-	   #:*print-log-datetime* #:*fn-log-pid*))
+	   #:*print-log-datetime* #:*fn-log-pid*
+	   #:*disabled-functions-logging*
+	   #:*disabled-layers-logging*))
 
 (in-package :daemon-logging)
 
@@ -255,11 +257,11 @@
      (t (str-list-close (format nil "(:values ~{~A ~}" (mapcar #'present-form (cons form extra-forms)))))))
 
 (defun is-logging-p (fn-sym package)
-  (not (member fn-sym *disabled-functions-logging*))
-  (not (member (package-name package)
+  (and (not (member fn-sym *disabled-functions-logging*))
+       (not (member (package-name package)
 	       *disabled-layers-logging* 
 	       :test #'string-equal
-	       :key #'princ-to-string)))
+	       :key #'princ-to-string))))
 
 (defmacro wrap-log-form (form)
   (with-gensyms (form-str res fn args)

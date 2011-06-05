@@ -35,7 +35,7 @@
   (log-info " ... OK.")
   cmd)
 
-(defun-ext check-conf-params (conf-params)
+(defun-ext check-conf-params (conf-params cmd)
 ;(setq conf-params '(:name "mydaemon" :user "lispuser" :pid-file "/home/lispuser/tmp/pid"))
   (log-info "Check conf-params ...")
   (unless (and (zerop (mod (length conf-params) 2))
@@ -46,10 +46,17 @@
 		  do (return)
 		  collect key into keys
 		  finally (return t)))
-      (log-err +bad-conf-str-err+)
-      (error +bad-conf-str-err+))
+      (log-err (format nil "~A (daemon command: ~A)" +bad-conf-str-err+ cmd))
+      (error (format nil "~A (daemon command: ~A)" +bad-conf-str-err+ cmd)))
   (log-info " ... OK.")
   conf-params)
+
+(defun-ext check-not-exists-pid-file (pid-file cmd)
+  (let ((err-str "pid-file ~S is already exists (daemon command: ~A)"))
+    (when (probe-file pid-file)
+      (log-err err-str pid-file cmd)
+      (error err-str pid-file cmd)
+      )))
 
 (defmacro result-messages (cmd-sym result-sym alist-messages extra-prompts print-extra-prompts)
   ;(setq alist-messages `(((,ex-ok "status" "kill") "fmt-str ~S ~A" 3434 data) (("stop" ,ex-software) "fmt-str ~S" 3434)))
@@ -99,7 +106,7 @@
      ,@(loop for (cmd-clause . forms) in cases-bodies
 	  collect `((string-equal ,cmd ,cmd-clause) ,@forms))))		    
 
-(defun-ext daemonized (conf-params daemon-command &key (on-error :call-error) print-extra-status &aux on-error-variants)
+(defun-ext daemonized (conf-params daemon-command &key (on-error :call-error) recreate-pid-file-on-start print-extra-status &aux on-error-variants)
   (setq on-error-variants '(:return-error :as-ignore-errors :call-error :exit-from-lisp))
   (assert (member on-error on-error-variants)
 	  () 
@@ -111,10 +118,17 @@
 	  (setf conf-params
 		(with-open-file (stream conf-params)
 		  (read stream))))
-	(check-conf-params conf-params)  
-	(when (getf conf-params :pid-file)
-	  (setf (getf conf-params :pid-file) 
-		(ensure-absolute-path (getf conf-params :pid-file))))
+
+	;;; Check and correct conf-params
+	(check-conf-params conf-params daemon-command)  
+	(let ((pid-file (getf conf-params :pid-file)))
+	  (when pid-file
+	    (setf (getf conf-params :pid-file) 
+		  (setf pid-file (ensure-absolute-path (getf conf-params :pid-file))))
+	    (when (string-equal "start" daemon-command)
+	      (if recreate-pid-file-on-start
+		  (when (probe-file pid-file) (delete-file pid-file))
+		  (check-not-exists-pid-file pid-file daemon-command))))) 
 
 	(log-info "conf-params is: ~S" conf-params)
 	(let* ((*process-type* :parent)
@@ -157,7 +171,7 @@
 	(:call-error (error err))
 	(:return-error err)
 	(:as-ignore-errors (values nil err))))))
-	  
+
 #|
 - Действия необходимые для отсоединения от терминала
      - определение константы sb-unix:tiocnotty

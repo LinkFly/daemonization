@@ -51,7 +51,7 @@
     (:user (get-full-pathname *log-filename*))
     (:root (get-full-pathname *root-log-filename*))))
 
-(defun get-syslog-file (&aux res)
+(defun get-syslog-file ()
   (case *test-mode*
     (:user (get-full-pathname *syslog-filename*))
     (:root (get-full-pathname *root-syslog-filename*))))
@@ -60,23 +60,22 @@
   (apply #'daemonization:daemonized	 
 	 (case *test-mode*
 	   (:user (list *daemon-conf* cmd 
-			:on-error :as-ignore-errors))
+			:on-error :as-ignore-errors 
+			:recreate-pid-file-on-start t))
 	   (:root (list *root-daemon-conf* cmd 
 			:print-extra-status t 
-			:on-error :as-ignore-errors)))))
+			:on-error :as-ignore-errors 
+			:recreate-pid-file-on-start t)))))
 
 (defun daemon-status ()
   (daemon-cmd "status"))
 
 (defun ensure-no-syslog-file ()
-  (when (probe-file (get-syslog-file))
+  (when (probe-file (get-syslog-file))    
     (delete-file (get-syslog-file))))
 
 (defun recreate-root-syslog-file ()
   (let ((*test-mode* :root)) 
-;;test
-;    (sb-posix:umask 0)
-;;end test
     (recreate-file-allow-write-other (get-syslog-file))))
 
 (defun print-syslog (fmt-str &rest args)
