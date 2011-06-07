@@ -157,7 +157,7 @@
 	  (exit-code (get-exit-code)))
       (clear-status-and-exit-code)
       (if fn-exit 
-	  (funcall fn-exit status :pid pid :exit-code exit-code)
+	  (funcall fn-exit status (make-extra-status :pid pid :exit-code exit-code))
 	  (funcall #'exit status))))
   (setf *process-type* :child))
 

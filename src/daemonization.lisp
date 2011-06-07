@@ -1,7 +1,10 @@
 (defpackage :daemonization 
   (:use :cl :daemon-share :daemon-core-port)
   (:import-from :daemon-utils-port #:exit #:getpid)
-  (:export #:daemonized #:get-daemon-log-list #:*fn-log-info* #:*fn-log-err*))
+  (:export #:daemonized #:get-daemon-log-list #:*fn-log-info* #:*fn-log-err*
+	   ;; for reading extra-status
+	   #:EXTRA-STATUS-EXIT-CODE #:EXTRA-STATUS-PID 
+	   #:EXTRA-STATUS-NAME #:EXTRA-STATUS-PID-FILE #:EXTRA-STATUS-USER))
 
 (in-package :daemonization)
 
@@ -76,22 +79,22 @@
   (log-info "here analizing result ...")
   (if (consp result)
       (setq status (first result)
-	    extra-status (rest result))
+	    extra-status (second result))
       (setq status result))
   (let ((analize-str
 	 (result-messages cmd 
 			  status
-			  (((ex-software "start") "failed ~A~A" cmd (if (and (getf extra-status :exit-code) 
-									     (= (getf extra-status :exit-code) 
+			  (((ex-software "start") "failed ~A~A" cmd (if (and (extra-status-exit-code extra-status) 
+									     (= (extra-status-exit-code extra-status) 
 										ex-cantcreate))
 									(format nil " - pid file already exists ~A"
 										(getf conf-params :pid-file))
 									""))
 			   ((+pid-file-not-found+ "status") "not-running - no pid file")
 			   ((+pid-file-not-found+ "start" "stop" "zap" "kill" "restart") "failed ~A - no pid file" cmd)
-			   ((ex-ok "status") "running (pid = ~A)" (getf extra-status :pid))
+			   ((ex-ok "status") "running (pid = ~A)" (extra-status-pid extra-status))
 			   ((ex-unavailable "status") "not-running") 
-			   ((ex-ok "start") "success started (pid = ~A)" (getf extra-status :pid))
+			   ((ex-ok "start") "success started (pid = ~A)" (extra-status-pid extra-status))
 			   ((ex-ok "stop" "zap" "kill" "restart") "success ~A" cmd) 
 			   ((ex-software "stop" "zap" "kill" "restart" "status") "failed ~A" cmd))
 			  extra-status
@@ -133,16 +136,16 @@
 	(log-info "conf-params is: ~S" conf-params)
 	(let* ((*process-type* :parent)
 	       (result (block into-daemonized
-			 (let ((*fn-exit* #'(lambda (&optional (status ex-ok) &rest extra-status) 
-					      (return-from into-daemonized (cons status extra-status)))))
+			 (let ((*fn-exit* #'(lambda (&optional (status ex-ok) extra-status) 
+					      (return-from into-daemonized (list status extra-status)))))
 			   (case-command daemon-command
 					 ("zap" (zap-service conf-params))
 					 ("stop" (stop-service conf-params))
 					 ("kill" (kill-service conf-params))
 					 ("restart" (let ((res (block into-daemonized-lev2
-								 (let ((*fn-exit* #'(lambda (&optional (status ex-ok) &rest extra-status)
+								 (let ((*fn-exit* #'(lambda (&optional (status ex-ok) extra-status)
 										      (return-from into-daemonized-lev2
-											(cons status extra-status)))))
+											(list status extra-status)))))
 								   (stop-service conf-params)))))
 						      (if (if (numberp res) 
 							      (= ex-ok res)
@@ -157,7 +160,7 @@
 	    (let (status extra-status)
 	      (if (consp result)
 		  (setq status (first result)
-			extra-status (rest result))
+			extra-status (second result))
 		  (setq status result))
 	      (when (getf conf-params :exit)
 		(exit status))

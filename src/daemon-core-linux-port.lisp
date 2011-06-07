@@ -44,10 +44,9 @@
 |#
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun-ext cur-exit (&optional (status ex-ok) &rest extra-status)
-  ;(log-err "is bug. *fn-exit*: ~S" *fn-exit*)
+(defun-ext cur-exit (&optional (status ex-ok) extra-status)
   (if *fn-exit*
-      (apply *fn-exit* status extra-status)
+      (funcall *fn-exit* status extra-status)
       (funcall #'exit status))) 
 
 ;;;;;; Daemon commands ;;;;;;;
@@ -65,33 +64,34 @@
 
   (defun-ext zap-daemon (pid-file)
     (if (not (probe-file pid-file))
-	(cur-exit +pid-file-not-found+ :pid-file pid-file)
+	(cur-exit +pid-file-not-found+ (make-extra-status :pid-file pid-file))
 	(progn 
 	  (delete-file pid-file)
-	  (cur-exit ex-ok :pid-file pid-file))))
-
+	  (cur-exit ex-ok (make-extra-status :pid-file pid-file)))))
+ 
   (defun-ext stop-daemon (pid-file)
     (if (not (probe-file pid-file))
-	(cur-exit +pid-file-not-found+ :pid-file pid-file)
+	(cur-exit +pid-file-not-found+ (make-extra-status :pid-file pid-file))
 	(let ((pid (read-pid-file pid-file)))
 	  (kill pid sigusr1)
 	  (loop
 	     while (ignore-errors (kill pid 0))
 	     do (sleep 0.1))
 	  (delete-file pid-file)
-	  (cur-exit ex-ok :pid pid :pid-file pid-file))))
+	  (cur-exit ex-ok (make-extra-status :pid pid :pid-file pid-file)))))
 
   (defun-ext status-daemon (pid-file)
     (if (not (probe-file pid-file))
-	(cur-exit +pid-file-not-found+ :pid-file pid-file)
+	(cur-exit +pid-file-not-found+ (make-extra-status :pid-file pid-file))
 	(let ((pid (read-pid-file pid-file)))
 	  (apply #'cur-exit 
 		 (let ((status (cond 
 				 ((ignore-errors (kill pid 0)) ex-ok)
 				 (t ex-unavailable))))
-		   `(,status :pid ,pid 
-			     ,@(when (= ex-ok status) (list :user (get-username pid)))
-			     :pid-file ,pid-file))))))
+		   (list status (make-extra-status :pid pid 
+						   :user (when (= ex-ok status)
+							   (get-username pid))
+						   :pid-file pid-file))))))) 
 
   (defun-ext kill-daemon (pid-file)
     (if (not (probe-file pid-file))
@@ -99,14 +99,22 @@
 	(let ((pid (read-pid-file pid-file))) 
 	  (kill pid sigkill)
 	  (delete-file pid-file)
-	  (cur-exit ex-ok :pid pid :pid-file pid-file))))
+	  (cur-exit ex-ok (make-extra-status :pid pid :pid-file pid-file)))))
  
   (defun-ext start-daemon (name pid-file &key configure-rights-fn preparation-fn main-fn before-parent-exit-fn)
     (fork-this-process
-     :fn-exit #'(lambda (&optional (status ex-ok) &rest extra-status)
-		  (apply #'cur-exit
-			 status 
-			 (append extra-status (list :name name :pid-file pid-file))))
+     :fn-exit #'(lambda (&optional (status ex-ok) extra-status)
+		  (funcall #'cur-exit
+			   status 
+			   (with-slots ((es-name name) (es-pid-file pid-file)) extra-status
+			     (unless (and (null es-name) (null es-pid-file))
+			       (let ((err
+"Slots name or/and pid-file of extra-status instance not must be fulled in this point"))
+				 (log-err err)
+				 (error err)))
+			     (setf es-name name
+				   es-pid-file pid-file)
+			     extra-status)))
      :parent-form-before-fork configure-rights-fn
      :parent-form-before-exit before-parent-exit-fn
      :child-form-after-fork #'set-global-error-handler

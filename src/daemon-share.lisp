@@ -5,7 +5,13 @@
 	   #:+pid-file-not-found+ #:+pid-file-exists+
 	   #:+system-name+ #:get-system-path #:absolute-path-p #:ensure-absolute-path
 	   #:call-file-exists-error #:file-exists-error
-	   ;;; logging
+
+	   ;;; Struct functions
+	   #:MAKE-EXTRA-STATUS #:EXTRA-STATUS-EXIT-CODE #:EXTRA-STATUS-PID 
+	   #:EXTRA-STATUS-NAME #:EXTRA-STATUS-PID-FILE #:EXTRA-STATUS-USER
+	   #:NAME #:PID-FILE
+
+	   ;;; Logging
 	   #:log-info #:log-err #:defun-ext #:wrap-log
 	   #:*print-log-info* #:*print-log-err*
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
@@ -28,7 +34,10 @@
 (defparameter *process-type* nil
   "Must be nil or :parent or :child. Needed for daemonize (there reading) and fork (there set)")
 
-(defparameter *fn-exit* nil "Function for none local exit. Must be have parameters (&optional (status ex-ok) &rest extra-status).")
+(defstruct extra-status 
+  pid exit-code name pid-file user)
+(defparameter *fn-exit* nil "Function for none local exit. Must be have parameters (&optional (status ex-ok) extra-status).
+Return value must be status value or list contained status value and value type of extra-status.")
 
 (defconstant ex-ok 0)
 (defconstant ex-general 1)
@@ -61,5 +70,4 @@
 			 :pathname pathname
 			 :format-control "File already exists: ~S"
 			 :format-arguments (list pathname))))
-
 

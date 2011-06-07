@@ -158,7 +158,7 @@
 		       (equal (list daemon-share:ex-ok username)
 			      (multiple-value-bind (status extra-status)
 				  (daemon-status)
-				(list status (getf extra-status :user)))))
+				(list status (extra-status-user extra-status)))))
 		(progn (format t "~%try stop ...~%") (daemon-cmd "stop") (not (eql daemon-share:ex-ok (daemon-status))))))
 	     ) ;and
 	    (format t "~% ... Tests passed.")
