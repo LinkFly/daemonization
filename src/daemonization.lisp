@@ -4,7 +4,10 @@
   (:export #:daemonized #:get-daemon-log-list #:*fn-log-info* #:*fn-log-err*
 	   ;; for reading extra-status
 	   #:EXTRA-STATUS-EXIT-CODE #:EXTRA-STATUS-PID 
-	   #:EXTRA-STATUS-NAME #:EXTRA-STATUS-PID-FILE #:EXTRA-STATUS-USER))
+	   #:EXTRA-STATUS-NAME #:EXTRA-STATUS-PID-FILE #:EXTRA-STATUS-USER
+
+	   ;; for finding pid-files
+	   #:*pid-files-dirname* #:get-pid-files-dir))
 
 (in-package :daemonization)
 
@@ -110,6 +113,7 @@
 	  collect `((string-equal ,cmd ,cmd-clause) ,@forms))))		    
 
 (defun-ext daemonized (conf-params daemon-command &key (on-error :call-error) recreate-pid-file-on-start print-extra-status &aux on-error-variants)
+  (when (consp conf-params) (setf conf-params (copy-list conf-params)))
   (setq on-error-variants '(:return-error :as-ignore-errors :call-error :exit-from-lisp))
   (assert (member on-error on-error-variants)
 	  () 
@@ -126,8 +130,9 @@
 	(check-conf-params conf-params daemon-command)  
 	(let ((pid-file (getf conf-params :pid-file)))
 	  (when pid-file
-	    (setf (getf conf-params :pid-file) 
-		  (setf pid-file (ensure-absolute-path (getf conf-params :pid-file))))
+	    (unless (absolute-path-p pid-file)
+	      (setf (getf conf-params :pid-file) 
+		    (setf pid-file (make-pathname :defaults (get-pid-files-dir) :name pid-file))))
 	    (when (string-equal "start" daemon-command)
 	      (if recreate-pid-file-on-start
 		  (when (probe-file pid-file) (delete-file pid-file))

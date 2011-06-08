@@ -4,7 +4,7 @@
 	   #:ex-ok #:ex-general #:ex-software #:ex-unavailable #:ex-cantcreate
 	   #:+pid-file-not-found+ #:+pid-file-exists+
 	   #:+system-name+ #:get-system-path #:absolute-path-p #:ensure-absolute-path
-	   #:call-file-exists-error #:file-exists-error
+	   #:call-file-exists-error #:file-exists-error #:absolute-path-p
 
 	   ;;; Struct functions
 	   #:MAKE-EXTRA-STATUS #:EXTRA-STATUS-EXIT-CODE #:EXTRA-STATUS-PID 
@@ -22,7 +22,9 @@
 	   #:*print-log-datetime* #:*fn-log-pid*
 	   #:*disabled-functions-logging*
 	   #:*disabled-layers-logging*
-	   ))
+
+	   ;; for finding pid-files 
+	   #:*pid-files-dirname* #:get-pid-files-dir))
 
 (in-package :daemon-share)
 
@@ -33,6 +35,8 @@
 (define-constant +system-name+ :daemonization)
 (defparameter *process-type* nil
   "Must be nil or :parent or :child. Needed for daemonize (there reading) and fork (there set)")
+
+(defparameter *pid-files-dirname* "pid-files" "Default directory for saving pid-files")
 
 (defstruct extra-status 
   pid exit-code name pid-file user)
@@ -62,6 +66,10 @@ Return value must be status value or list contained status value and value type 
       (make-pathname :defaults (get-system-path)
 		     :name path)
       path))
+
+(defun get-pid-files-dir ()
+  (make-pathname :defaults (get-system-path)
+		 :directory (append (pathname-directory (get-system-path)) (list *pid-files-dirname*))))
 
 (define-condition file-exists-error (error) ((pathname :initarg :pathname :accessor file-exists-error-pathname)))
 
