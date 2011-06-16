@@ -43,17 +43,19 @@
 
 ;;;;;;;;;;;;;;;;;;;;;; Logging ;;;;;;;;;;;;;;;;;;;;;;
 
-;;; Correct log-info and log-err (function from :daemon-logging)
+;;; Correct log-info and log-err (function from :daemon-share)
 (eval-when (:compile-toplevel)
-  (setf (macro-function 'log-info) (macro-function 'daemon-logging:log-info))
-  (setf (macro-function 'log-err) (macro-function 'daemon-logging:log-err)))
+  (setf (macro-function 'log-info) (macro-function 'daemon-share:log-info))
+  (setf (macro-function 'log-err) (macro-function 'daemon-share:log-err)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defparameter daemon-logging:*fn-log-info* #'(lambda (fmt-str &rest args)
+(defparameter daemon-share:*fn-log-info* #'(lambda (fmt-str &rest args)
 				(syslog log-info (add-daemon-log (apply #'format nil fmt-str args)))))
-(defparameter daemon-logging:*fn-log-err* #'(lambda (fmt-str &rest args)
+(defparameter daemon-share:*fn-log-err* #'(lambda (fmt-str &rest args)
 				(syslog log-err (add-daemon-log (concatenate 'string "ERROR: " (apply #'format nil fmt-str args))))))
-(defparameter daemon-logging:*fn-log-pid* #'(lambda () (format nil ":pid ~A" (getpid))))
+(defparameter daemon-share:*fn-log-trace* #'(lambda (fmt-str)
+				(syslog log-info (add-daemon-log (funcall #'princ fmt-str)))))
+(defparameter daemon-share:*fn-log-pid* #'(lambda () (format nil ":pid ~A" (getpid))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Correct open (for handling mode-t param equal nil

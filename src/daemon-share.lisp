@@ -17,7 +17,7 @@
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
 	   #:*print-call #:*print-called-form-with-result*
 	   #:*print-pid*
-	   #:*fn-log-info* #:*fn-log-err* #:*log-prefix*
+	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
 	   #:*print-log-datetime* #:*fn-log-pid*
 	   #:*disabled-functions-logging*

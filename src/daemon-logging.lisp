@@ -5,7 +5,7 @@
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
 	   #:*print-call #:*print-called-form-with-result*
 	   #:*print-pid*
-	   #:*fn-log-info* #:*fn-log-err* #:*log-prefix*
+	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
 	   #:*print-log-datetime* #:*fn-log-pid*
 	   #:*disabled-functions-logging*
@@ -41,6 +41,8 @@
 				(apply #'format t fmt-str args)))
 (defparameter *fn-log-err* #'(lambda (fmt-str &rest args)
 				(apply #'format t fmt-str args)))
+(defparameter *fn-log-trace* #'(lambda (fmt-str)
+				(funcall #'princ fmt-str)))
 (defparameter *fn-log-pid* nil)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -75,6 +77,8 @@
   (get-log-fn (symbol-name '*FN-LOG-INFO*)))
 (defun get-fn-log-err ()
   (get-log-fn (symbol-name '*FN-LOG-ERR*)))
+(defun get-fn-log-trace ()
+  (get-log-fn (symbol-name '*FN-LOG-TRACE*)))
 
 (defun get-log-layer ()
   (let ((layer-sym (when *def-in-package* (find-symbol (symbol-name '+LOG-LAYER+) *def-in-package*))))
@@ -129,8 +133,8 @@
     (setq format-str-or-list (list format-str-or-list)))
   (apply fn-log (apply #'wrap-fmt-str format-str-or-list) args))
 
-(defun syslog-info (format-str &rest args)  
-  (apply #'logging (get-fn-log-info) format-str args))
+(defun syslog-trace (format-str)  
+  (funcall #'logging (get-fn-log-trace) format-str))
 
 (defmacro log-info (format-str &rest args)
   `(when *print-log-info* 
@@ -147,19 +151,19 @@
     (return-from as-string (format nil "~S" sexpr)))
   sexpr)
 
-(defun syslog-call-info (form)
-  (syslog-info (format nil ":CALL ~A" (as-string form)))
+(defun syslog-call-into (form)
+  (syslog-trace (format nil ":CALL ~A" (as-string form)))
   (incf *log-indent* *log-indent-size*))
   
 (defun syslog-call-out (result &optional form)  
   (decf *log-indent* *log-indent-size*)
   (if (< *log-indent* 0)
       (error "*log-indent* not must be less zero. Not correct log operation."))
-  (syslog-info ":RESULT ~A ~A"
-	       result 
-	       (if form 
-		   (format nil ":CALLED-FORM ~A" (as-string form))
-		   "")))
+  (syslog-trace (format nil ":RESULT ~A ~A"
+			result 
+			(if form 
+			    (concatenate 'string ":CALLED-FORM " (as-string form))			    
+			    ""))))
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -239,7 +243,7 @@
 
 (defun present-form (&optional form &rest extra-forms)
   (cond 
-    ((null form) "NIL") ;(format nil "(:values)"))
+    ((null form) "NIL")
     ((null extra-forms)
      (cond 
        ((consp form)  (if (and (= 2 (length form)) 
@@ -277,7 +281,7 @@
 				 `(quote ,form)
 				 `(cons ,fn ,args)))))
 	   (when (is-logging-p ,fn *def-in-package*)
-	     (syslog-call-info ,form-str))
+	     (syslog-call-into ,form-str))
 	   (let ((,res (multiple-value-list 
 			,(if (is-special-or-macro-p (first form))
 			     form
@@ -304,7 +308,7 @@
 							     arg))
 						     (list ,@(present-args args)))))))
 	 (when (and *print-call* (is-logging-p ,this-name *def-in-package*))
-	   (syslog-call-info ,form-str))
+	   (syslog-call-into ,form-str))
 
 	 (let ((,res (multiple-value-list 
 		      (locally ,@(remove-declare-ignore body)))))	   

@@ -85,8 +85,7 @@
   (ensure-no-file (get-syslog-file)))
 
 (defun ensure-no-pid-file ()
-  (ensure-no-file (get-pid-file))
-)
+  (ensure-no-file (get-pid-file)))
 
 (defun recreate-root-syslog-file ()
   (let ((*test-mode* :root)) 
