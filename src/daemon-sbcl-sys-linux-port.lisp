@@ -54,7 +54,7 @@
 (defparameter daemon-share:*fn-log-err* #'(lambda (fmt-str &rest args)
 				(syslog log-err (add-daemon-log (concatenate 'string "ERROR: " (apply #'format nil fmt-str args))))))
 (defparameter daemon-share:*fn-log-trace* #'(lambda (fmt-str)
-				(syslog log-info (add-daemon-log (funcall #'princ fmt-str)))))
+				(syslog log-info "~A" (add-daemon-log fmt-str))))
 (defparameter daemon-share:*fn-log-pid* #'(lambda () (format nil ":pid ~A" (getpid))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
