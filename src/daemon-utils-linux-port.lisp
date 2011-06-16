@@ -20,13 +20,13 @@
 (in-package :daemon-utils-linux-port)
 
 (defun-ext set-current-dir (path)
-  (log-info "changing directory, current directory: ~S ..." path (getcwd))
+  (log-info "changing directory, current directory: ~A" (getcwd))
   (chdir path)
-  (log-info "new current directory: ~S." (getcwd)))
+  (log-info "new current directory: ~A" (getcwd)))
 
 (defun-ext set-umask (value)  
   (let ((old-val (umask value)))
-    (log-info "setted umask: ~S, Old umask: ~S." value old-val)
+    (log-info "setted umask: ~S, Old umask: ~S" value old-val)
     old-val))
 
 #+daemon.as-daemon
@@ -39,8 +39,8 @@
 	(log-info "try dettach from tty ..." fd)
 	(let ((res (ioctl fd tiocnotty)))
 	  (log-info (if (>= res 0) 
-			"=> success."
-			"=> no success.")))	
+			"=> success"
+			"=> no success")))	
 	(close fd))))
 
   (defun-ext switch-to-slave-pseudo-terminal (&optional (out #P"/dev/null") (err #P"/dev/null"))
