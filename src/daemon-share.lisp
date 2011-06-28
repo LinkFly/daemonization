@@ -53,10 +53,8 @@ Return value must be status value or list contained status value and value type 
 (defconstant +pid-file-exists+ 257)
  
 (defun get-system-path ()
-  (make-pathname :defaults
-		 (asdf:component-pathname 
-		  (asdf:find-system +system-name+))
-		 :name nil :type nil))
+  (asdf:component-pathname 
+   (asdf:find-system +system-name+)))
 
 (defun absolute-path-p (pathname)
   (eq :absolute (first (pathname-directory pathname))))
