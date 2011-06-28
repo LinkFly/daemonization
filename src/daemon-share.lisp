@@ -1,7 +1,7 @@
 (defpackage daemon-share 
   (:use :cl :daemon-features :daemon-logging)
   (:export #:define-constant #:*process-type* #:*fn-exit* 
-	   #:ex-ok #:ex-general #:ex-software #:ex-unavailable #:ex-cantcreate
+	   #:+ex-ok+ #:+ex-general+ #:+ex-software+ #:+ex-unavailable+ #:+ex-cantcreate+
 	   #:+pid-file-not-found+ #:+pid-file-exists+
 	   #:+system-name+ #:get-system-path #:absolute-path-p #:ensure-absolute-path
 	   #:call-file-exists-error #:file-exists-error #:absolute-path-p
@@ -40,14 +40,14 @@
 
 (defstruct extra-status 
   pid exit-code name pid-file user)
-(defparameter *fn-exit* nil "Function for none local exit. Must be have parameters (&optional (status ex-ok) extra-status).
+(defparameter *fn-exit* nil "Function for none local exit. Must be have parameters (&optional (status +ex-ok+) extra-status).
 Return value must be status value or list contained status value and value type of extra-status.")
 
-(defconstant ex-ok 0)
-(defconstant ex-general 1)
-(defconstant ex-software 70)
-(defconstant ex-cantcreate 73)
-(defconstant ex-unavailable 69)
+(defconstant +ex-ok+ 0)
+(defconstant +ex-general+ 1)
+(defconstant +ex-software+ 70)
+(defconstant +ex-cantcreate+ 73)
+(defconstant +ex-unavailable+ 69)
 
 (defconstant +pid-file-not-found+ 256)
 (defconstant +pid-file-exists+ 257)

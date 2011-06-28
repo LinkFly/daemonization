@@ -66,8 +66,7 @@
 	(cap-free cap_p)      
       
 	(passwd-uid object)
-	ex-ok
-	ex-software  
+
 	s-iread
 	s-iroth 
 	s-iwrite

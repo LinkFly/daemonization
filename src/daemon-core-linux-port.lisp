@@ -35,8 +35,8 @@
 	      (log-err err))
 	    (exit 
 	     (typecase condition
-	       (file-exists-error ex-cantcreate)
-	       (t ex-software))))))
+	       (file-exists-error +ex-cantcreate+)
+	       (t +ex-software+))))))
 
 #+daemon.as-daemon
 #|(defun-ext unset-global-error-handler ()
@@ -44,7 +44,7 @@
 |#
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun-ext cur-exit (&optional (status ex-ok) extra-status)
+(defun-ext cur-exit (&optional (status +ex-ok+) extra-status)
   (if *fn-exit*
       (funcall *fn-exit* status extra-status)
       (funcall #'exit status))) 
@@ -60,14 +60,14 @@
 			  (declare (ignore sig info context))
 			  (progn 
 			    (log-info "Stop ~A daemon" (or daemon-name ""))
-			    (cur-exit ex-ok)))))
+			    (cur-exit +ex-ok+)))))
 
   (defun-ext zap-daemon (pid-file)
     (if (not (probe-file pid-file))
 	(cur-exit +pid-file-not-found+ (make-extra-status :pid-file pid-file))
 	(progn 
 	  (delete-file pid-file)
-	  (cur-exit ex-ok (make-extra-status :pid-file pid-file)))))
+	  (cur-exit +ex-ok+ (make-extra-status :pid-file pid-file)))))
  
   (defun-ext stop-daemon (pid-file)
     (if (not (probe-file pid-file))
@@ -78,7 +78,7 @@
 	     while (ignore-errors (kill pid 0))
 	     do (sleep 0.1))
 	  (delete-file pid-file)
-	  (cur-exit ex-ok (make-extra-status :pid pid :pid-file pid-file)))))
+	  (cur-exit +ex-ok+ (make-extra-status :pid pid :pid-file pid-file)))))
 
   (defun-ext status-daemon (pid-file)
     (if (not (probe-file pid-file))
@@ -86,10 +86,10 @@
 	(let ((pid (read-pid-file pid-file)))
 	  (apply #'cur-exit 
 		 (let ((status (cond 
-				 ((ignore-errors (kill pid 0)) ex-ok)
-				 (t ex-unavailable))))
+				 ((ignore-errors (kill pid 0)) +ex-ok+)
+				 (t +ex-unavailable+))))
 		   (list status (make-extra-status :pid pid 
-						   :user (when (= ex-ok status)
+						   :user (when (= +ex-ok+ status)
 							   (get-username pid))
 						   :pid-file pid-file))))))) 
 
@@ -99,11 +99,11 @@
 	(let ((pid (read-pid-file pid-file))) 
 	  (kill pid sigkill)
 	  (delete-file pid-file)
-	  (cur-exit ex-ok (make-extra-status :pid pid :pid-file pid-file)))))
+	  (cur-exit +ex-ok+ (make-extra-status :pid pid :pid-file pid-file)))))
  
   (defun-ext start-daemon (name pid-file &key configure-rights-fn preparation-fn main-fn before-parent-exit-fn)
     (fork-this-process
-     :fn-exit #'(lambda (&optional (status ex-ok) extra-status)
+     :fn-exit #'(lambda (&optional (status +ex-ok+) extra-status)
 		  (funcall #'cur-exit
 			   status 
 			   (with-slots ((es-name name) (es-pid-file pid-file)) extra-status

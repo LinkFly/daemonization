@@ -152,8 +152,8 @@
        do (sleep 0.1))
     (when fn-before-exit (funcall fn-before-exit pid (get-status)))
     (let ((status (if (= (get-status) sigusr1)
-		       ex-ok
-		       ex-software))
+		       +ex-ok+
+		       +ex-software+))
 	  (exit-code (get-exit-code)))
       (clear-status-and-exit-code)
       (if fn-exit 
