@@ -18,8 +18,14 @@
 
 (defun root-run-tests (username &aux parent-pid)
   (setf parent-pid (daemonization-test:get-proc-id))
-  (when (string= "" username)
-    (error "ERROR: need username"))
+  (when (or (null username) 
+	    (not (stringp username))
+	    (string= "" username))
+    (setf username 
+	  (restart-case (error "ERROR: need username")
+	    (use-value () 
+	      ;(format *error-output* "Please enter user name: ")
+	      (read-line)))))
   (daemonization-test:root-run-tests username)
   (when (= parent-pid (daemonization-test:get-proc-id))
     (quit)))
