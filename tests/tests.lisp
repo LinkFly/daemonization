@@ -143,7 +143,7 @@
 	 (*standard-output* (open-broadcast-log-stream))
 	 (*fn-log-info* #'print-syslog)
 	 (*fn-log-err* #'print-syslog)
-	 (*fn-log-trace* #'print-syslog))
+	 (*fn-log-trace* #'print-syslog))    
     (ensure-no-syslog-file)
     (recreate-root-syslog-file)    
     (princ "Tests daemonized (with is changing of user) ... ")

@@ -24,7 +24,8 @@
     (setf username 
 	  (restart-case (error "ERROR: need username")
 	    (use-value () 
-	      ;(format *error-output* "Please enter user name: ")
+	      (format *standard-output* "Please enter user name: ")
+	      (finish-output)
 	      (read-line)))))
   (daemonization-test:root-run-tests username)
   (when (= parent-pid (daemonization-test:get-proc-id))
