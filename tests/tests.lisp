@@ -96,16 +96,15 @@
 				 :direction :output :if-does-not-exist :create :if-exists :append)
     (apply #'format syslog-stream fmt-str args)))
 
-(defun open-broadcast-log-stream ()
-  (make-broadcast-stream
-   (open (get-log-file) :direction :output :if-does-not-exist :create :if-exists :supersede)
-   *standard-output*))
-
 (defun run-tests () 			 
   (let* ((parent-pid (get-proc-id))
 	 (fn-child-proc-p (lambda () (/= parent-pid (get-proc-id))))
 	 (*test-mode* :user)
-	 (*standard-output* (open-broadcast-log-stream))
+	 (prompts-file-stream (open (get-log-file)
+				    :direction :output
+				    :if-does-not-exist :create
+				    :if-exists :supersede))
+	 (*standard-output* (make-broadcast-stream prompts-file-stream *standard-output*))
 	 (*fn-log-info* #'print-syslog)
 	 (*fn-log-err* #'print-syslog)
 	 (*fn-log-trace* #'print-syslog))
@@ -131,8 +130,8 @@
 		 (format t "~% ... Tests failed."))
 	     (terpri)
 	     (finish-output *standard-output*)
-					;(close *broadcast-stream*)
-					;(close *log-prompts-stream*)
+	     (close *standard-output*) 
+	     (close prompts-file-stream)
 	     ))	;block tests
     (unless (funcall fn-child-proc-p) (ensure-no-pid-file)))))
 
@@ -140,7 +139,11 @@
   (let* ((parent-pid (get-proc-id))
 	 (fn-child-proc-p (lambda () (/= parent-pid (get-proc-id))))
 	 (*test-mode* :root)
-	 (*standard-output* (open-broadcast-log-stream))
+	 (prompts-file-stream (open (get-log-file)
+				    :direction :output
+				    :if-does-not-exist :create
+				    :if-exists :supersede))
+	 (*standard-output* (make-broadcast-stream prompts-file-stream *standard-output*))
 	 (*fn-log-info* #'print-syslog)
 	 (*fn-log-err* #'print-syslog)
 	 (*fn-log-trace* #'print-syslog))    
@@ -179,7 +182,7 @@
 	  
 	     (terpri)	
 	     (finish-output *standard-output*)
-					;(close *broadcast-stream*)
-					;(close *log-prompts-stream*)
+	     (close *standard-output*)
+	     (close prompts-file-stream)
 	     )) ;block tests
       (unless (funcall fn-child-proc-p) (ensure-no-pid-file)))))
