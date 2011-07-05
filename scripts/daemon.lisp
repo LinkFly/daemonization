@@ -8,9 +8,9 @@
 
 (with-output-to-string (*trace-output*)
   (with-output-to-string (*standard-output*)
-      (asdf:load-system :daemonization)))
+    (asdf:load-system :daemonization)))
 
-(let* ((args (rest (daemonization:get-args)))
+(let* ((args (rest (daemonization-utils:get-args)))
        (conf-file (first args))
        (command (second args)))
   (when (not (eq :absolute (first (pathname-directory conf-file))))
