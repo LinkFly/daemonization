@@ -2,6 +2,7 @@
   (:use :cl :daemon-share :daemon-core-port)
   (:import-from :daemon-utils-port #:exit #:getpid)
   (:export #:daemonized #:get-daemon-log-list #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace*
+	   #:+all-daemon-commands+ #:+conf-parameters+
 	   ;; for reading extra-status
 	   #:EXTRA-STATUS-EXIT-CODE #:EXTRA-STATUS-PID 
 	   #:EXTRA-STATUS-NAME #:EXTRA-STATUS-PID-FILE #:EXTRA-STATUS-USER
