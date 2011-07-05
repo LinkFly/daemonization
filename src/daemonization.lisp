@@ -89,7 +89,7 @@
 			  status
 			  (((+ex-software+ "start") "failed ~A~A" cmd (if (and (extra-status-exit-code extra-status) 
 									     (= (extra-status-exit-code extra-status) 
-										ex-cantcreate))
+										+ex-cantcreate+))
 									(format nil " - pid file already exists ~A"
 										(getf conf-params :pid-file))
 									""))
