@@ -72,13 +72,16 @@
   (defun-ext stop-daemon (pid-file)
     (if (not (probe-file pid-file))
 	(cur-exit +pid-file-not-found+ (make-extra-status :pid-file pid-file))
-	(let ((pid (read-pid-file pid-file)))
+	(let* ((pid (read-pid-file pid-file))
+	       (extra-status (make-extra-status :pid pid :pid-file pid-file)))
+	  (unless (ignore-errors (kill pid 0))
+	    (cur-exit +process-not-exists+ extra-status))
 	  (kill pid sigusr1)
 	  (loop
 	     while (ignore-errors (kill pid 0))
 	     do (sleep 0.1))
 	  (delete-file pid-file)
-	  (cur-exit +ex-ok+ (make-extra-status :pid pid :pid-file pid-file)))))
+	  (cur-exit +ex-ok+ extra-status))))
 
   (defun-ext status-daemon (pid-file)
     (if (not (probe-file pid-file))

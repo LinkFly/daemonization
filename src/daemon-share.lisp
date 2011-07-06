@@ -2,7 +2,7 @@
   (:use :cl :daemon-features :daemon-logging)
   (:export #:define-constant #:*process-type* #:*fn-exit* 
 	   #:+ex-ok+ #:+ex-general+ #:+ex-software+ #:+ex-unavailable+ #:+ex-cantcreate+
-	   #:+pid-file-not-found+ #:+pid-file-exists+
+	   #:+pid-file-not-found+ #:+pid-file-exists+ #:+process-not-exists+
 	   #:+system-name+ #:get-system-path #:absolute-path-p #:ensure-absolute-path
 	   #:call-file-exists-error #:file-exists-error #:absolute-path-p
 
@@ -51,6 +51,7 @@ Return value must be status value or list contained status value and value type 
 
 (defconstant +pid-file-not-found+ 256)
 (defconstant +pid-file-exists+ 257)
+(defconstant +process-not-exists+ 258)
  
 (defun get-system-path ()
   (asdf:component-pathname 
@@ -76,4 +77,8 @@ Return value must be status value or list contained status value and value type 
 			 :pathname pathname
 			 :format-control "File already exists: ~S"
 			 :format-arguments (list pathname))))
+
+
+
+
 

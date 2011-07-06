@@ -98,6 +98,8 @@
 			   ((+pid-file-not-found+ "start" "stop" "zap" "kill" "restart") "failed ~A - no pid file" cmd)
 			   ((+ex-ok+ "status") "running (pid = ~A)" (extra-status-pid extra-status))
 			   ((+ex-unavailable+ "status") "not-running") 
+			   ((+process-not-exists+ "stop") "failed stop - not-running (pid = ~A pid-file = ~A)" 
+			                          (extra-status-pid extra-status) (extra-status-pid-file extra-status))
 			   ((+ex-ok+ "start") "success started (pid = ~A)" (extra-status-pid extra-status))
 			   ((+ex-ok+ "stop" "zap" "kill" "restart") "success ~A" cmd) 
 			   ((+ex-software+ "stop" "zap" "kill" "restart" "status") "failed ~A" cmd))
