@@ -52,8 +52,9 @@
 					       :new-group (getf params :group)))
      :preparation-fn #'isolate-process
      
-     :main-fn (getf params :main-function)))
-
+     :main-fn (getf params :main-function)
+     :os-params (getf params :os-params)))
+  
   ) ;feature :as-daemon					
 
 (defun-ext simple-start (params)

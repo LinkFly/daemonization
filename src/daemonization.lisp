@@ -23,7 +23,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-constant +all-daemon-commands+ '("start" "stop" "zap" "kill" "restart" "nodaemon" "status"))
-(define-constant +conf-parameters+ '(:main-function :name :user :group :pid-file :before-parent-exit-fn :exit))
+(define-constant +conf-parameters+ '(:main-function :name :user :group :pid-file :before-parent-exit-fn :exit :os-params))
 (define-constant 
     +bad-conf-str-err+
     (format nil 

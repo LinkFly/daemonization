@@ -104,7 +104,7 @@
 	  (delete-file pid-file)
 	  (cur-exit +ex-ok+ (make-extra-status :pid pid :pid-file pid-file)))))
  
-  (defun-ext start-daemon (name pid-file &key configure-rights-fn preparation-fn main-fn before-parent-exit-fn)
+  (defun-ext start-daemon (name pid-file &key configure-rights-fn preparation-fn main-fn before-parent-exit-fn os-params)
     (fork-this-process
      :fn-exit #'(lambda (&optional (status +ex-ok+) extra-status)
 		  (funcall #'cur-exit
@@ -124,7 +124,10 @@
      :child-form-before-send-success #'(lambda () 
 					 (progn 
 					   (set-current-dir #P"/")					
-					   (set-umask 0)
+					   (set-umask (let (umask) 
+							(if (setf umask (getf os-params :linux-umask))
+							    umask
+							    0)))
 					   (when preparation-fn (funcall preparation-fn))
 					   (enable-handling-stop-command name)					
 					   (when pid-file (create-pid-file pid-file))))
