@@ -15,7 +15,11 @@
 	   #:fork-and-parent-exit-on-child-signal
 	   #:exit #:get-args #:getpid
 	   #:recreate-file-allow-write-other
-	   #:get-username))   
+	   #:get-username
+	   #:get-groupname
+	   #:admin-user-p
+	   #:equal-users
+	   #:equal-groups))   
 
 (in-package :daemon-utils-linux-port)
 
@@ -88,30 +92,49 @@
 			 :if-does-not-exist :create)
       (write (getpid) :stream out)))
 
-  (defun-ext get-username (&optional (pid (getpid)))
+  (defun-ext get-username (&aux (pid (getpid)))
     ;(getenv "USERNAME"))
     (passwd-name 
      (getpwuid 
       (stat-uid
        (stat (format nil "/proc/~A" pid))))))
+
+  (defun-ext get-groupname ()
+    (group-name (getgrgid (getgid))))
+
   ) ;feature :daemon.as-daemon
 
 #+daemon.change-user
-(defun-ext linux-change-user (&key name group)
+ (progn
+(defun-ext admin-user-p (user)
+  (string= "root" user))
+
+(defun-ext equal-users (user1 user2)
+  (string= user1 user2))
+
+(defun-ext equal-groups (group1 group2)
+  (string= group1 group2))
+
+(defun-ext linux-change-user (&key name group 
+			      &aux passwd-struct group-struct)  
   (cond
-    ((and group (null name))
-     (setf name (get-username)))
     ((and (null group) (null name))
      (return-from linux-change-user))
-    (t
-     (let* ((passwd (getpwnam name))
-	    (gid (if group
-		     (group-gid (wrap-log (getgrnam group)))
-		     (passwd-gid passwd)))
-	    (uid (passwd-uid passwd)))
+    (t     
+     (setf passwd-struct (wrap-log (getpwnam name)))
+     (unless passwd-struct (call-passwd-struct-not-found-error name))
+     (when group
+       (setf group-struct (wrap-log (getgrnam group)))
+       (unless group-struct (call-group-struct-not-found-error group)))
+     (let* ((gid (if group
+		     (group-gid group-struct)
+		     (passwd-gid passwd-struct)))
+	    (uid (passwd-uid passwd-struct)))
        (setresgid gid gid gid)
        (initgroups name gid)
-       (setresuid uid uid uid)))))	;feature :daemon.change-user
+       (setresuid uid uid uid)))))	
+
+);feature :daemon.change-user
 ;;;;;;;;
 
 #+daemon.listen-privileged-ports
@@ -120,7 +143,7 @@
     (prctl +PR_SET_KEEPCAPS+ 1))
 
   (defun-ext set-grant-listen-privileged-ports ()
-    (let ((cap_p (cap-from-text "CAP_NET_BIND_SERVICE=ep")))
+    (let ((cap_p (cap-from-text "CAP_NET_BIND_SERVICE=ep")))      
       (cap-set-proc cap_p)
       (cap-free cap_p)))
 
@@ -144,7 +167,7 @@
 
 #+daemon.as-daemon
 (defun-ext fork-and-parent-exit-on-child-signal (&optional fn-before-exit fn-exit &aux pid)  
-  (clear-status-and-exit-code)
+  (clear-status-and-exit-code)  
   (unless (= (setf pid (fork)) 0)
     (setf *process-type* :parent)
     (loop 
@@ -172,14 +195,11 @@
 			     main-child-form)
   (progn
     (log-info "preparing before fork this process ...")    
-      
     (wrap-log (enable-interrupt sigusr1 #'signal-handler)
 	      (enable-interrupt sigchld #'sigchld-handler)
 	      (when parent-form-before-fork (funcall parent-form-before-fork)))
-     
     (log-info " ... OK(preparing before fork).")
-     
-    (wrap-log 
+    (wrap-log      
      (fork-and-parent-exit-on-child-signal parent-form-before-exit fn-exit)
      (when child-form-after-fork (funcall child-form-after-fork))
      (enable-interrupt sigusr1 :default)

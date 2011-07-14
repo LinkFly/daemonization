@@ -1,10 +1,13 @@
 (defpackage daemon-share 
   (:use :cl :daemon-features :daemon-logging)
-  (:export #:define-constant #:*process-type* #:*fn-exit* 
+  (:export #:define-constant #:*process-type* #:*fn-exit*
 	   #:+ex-ok+ #:+ex-general+ #:+ex-software+ #:+ex-unavailable+ #:+ex-cantcreate+
 	   #:+pid-file-not-found+ #:+pid-file-exists+ #:+process-not-exists+
 	   #:+system-name+ #:get-system-path #:absolute-path-p #:ensure-absolute-path
 	   #:call-file-exists-error #:file-exists-error #:absolute-path-p
+	   #:call-passwd-struct-not-found-error #:call-group-struct-not-found-error
+	   #:call-group-change-but-user-not-change-error
+	   #:pathname-as-directory 
 
 	   ;;; Struct functions
 	   #:MAKE-EXTRA-STATUS #:EXTRA-STATUS-EXIT-CODE #:EXTRA-STATUS-PID 
@@ -66,18 +69,75 @@ Return value must be status value or list contained status value and value type 
 		     :name path)
       path))
 
+(defun component-present-p (value)
+  "Helper function for DIRECTORY-PATHNAME-P which checks whether VALUE
+is neither NIL nor the keyword :UNSPECIFIC."
+  (and value (not (eql value :unspecific))))
+
+(defun directory-pathname-p (pathspec)
+  "Returns NIL if PATHSPEC \(a pathname designator) does not designate
+a directory, PATHSPEC otherwise.  It is irrelevant whether file or
+directory designated by PATHSPEC does actually exist."
+  (and 
+    (not (component-present-p (pathname-name pathspec)))
+    (not (component-present-p (pathname-type pathspec)))
+    pathspec))
+
+(defun pathname-as-directory (pathspec)
+  "Converts the non-wild pathname designator PATHSPEC to directory
+form."
+  (let ((pathname (pathname pathspec)))
+    (when (wild-pathname-p pathname)
+      (error "Can't reliably convert wild pathnames."))
+    (cond ((not (directory-pathname-p pathspec))
+           (make-pathname :directory (append (or (pathname-directory pathname)
+                                                 (list :relative))
+                                             (list (file-namestring pathname)))
+                          :name nil
+                          :type nil
+                          :defaults pathname))
+          (t pathname))))
+
 (defun get-pid-files-dir ()
   (make-pathname :defaults (get-system-path)
 		 :directory (append (pathname-directory (get-system-path)) (list *pid-files-dirname*))))
 
-(define-condition file-exists-error (error) ((pathname :initarg :pathname :accessor file-exists-error-pathname)))
+(define-condition file-exists-error (error) 
+  ((pathname :initarg :pathname :accessor file-exists-error-pathname))
+  (:report (lambda (condition stream)
+	     (format stream "File already exists: ~S" (file-exists-error-pathname condition)))))
+
+(define-condition passwd-struct-not-found-error (error) 
+  ((user-name :initarg :user-name :accessor user-name))
+  (:report (lambda (condition stream)
+	     (format stream "Not found passwd structure. User name = ~S. Bad user name?" (user-name condition)))))
+
+(define-condition group-struct-not-found-error (error) 
+  ((group-name :initarg :group-name :accessor group-name))
+  (:report (lambda (condition stream)
+	     (format stream "Not found group structure. Group name = ~S. Bad group name?" (group-name condition)))))
+
+(define-condition group-change-but-user-not-change-error (error)
+  ((group-name :initarg :group-name :accessor group-name))
+  (:report (lambda (condition stream)
+	     (format stream "Can't change the group, but not modify user. Group name: ~S"
+		     (group-name condition)))))
 
 (defun call-file-exists-error (pathname)
-  (error (make-condition 'file-exists-error
-			 :pathname pathname
-			 :format-control "File already exists: ~S"
-			 :format-arguments (list pathname))))
+  (error 'file-exists-error
+	 :pathname pathname))
 
+(defun call-passwd-struct-not-found-error (user-name)
+  (error 'passwd-struct-not-found-error
+	 :user-name user-name))
+
+(defun call-group-struct-not-found-error (group-name)
+  (error 'group-struct-not-found-error
+	 :group-name group-name))
+
+(defun call-group-change-but-user-not-change-error (group-name)
+  (error 'group-change-but-user-not-change-error
+	 :group-name group-name))
 
 
 

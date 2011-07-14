@@ -1,0 +1,18 @@
+(defun test-create (num &aux pid-file)
+  (setq pid-file
+        #P"/media/WORK_PARTITION/work_dir/web-projects/dynserv/asdf-systems/daemonization/pid-files/tmppid")
+  (when (probe-file pid-file) (delete-file pid-file))
+  (log-info "!!!!!!!!!!!!!!!!!!!!!! before ~A) test create-pid-file" num)
+  (create-pid-file pid-file)
+  (log-info "!!!!!!!!!!!!!!!!! ~A) created: ~A result: ~A"
+            num
+            pid-file
+            (probe-file pid-file)))
+
+1)Added many tasks.
+2)Added :pid-file-dir in  daemon configure params.
+3)Added errors: #:call-passwd-struct-not-found-error #:call-group-struct-not-found-error+ #:call-group-change-but-user-not-change-error (and calling errors functions call-*) in daemon-share.lisp
+4)Added pathname-as-directory (in support functions), from cl-fad in daemon-share.lisp
+5)Added functions (getgid) (getgrgid gid) (group-name object) for release functions get-groupname, return current group name.
+6)Added functions #:get-groupname #:admin-user-p #:equal-users #:equal-groups in daemon-utils-linux-port.lisp. 
+7)For change user and/or group and set listen privileged ports feature for new user, now needed run daemon by admin user.

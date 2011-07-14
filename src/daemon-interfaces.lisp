@@ -51,6 +51,10 @@
  
 					;not posix
 	(group-gid object)
+	(getgid)
+	(getgrgid gid)
+	(group-name object)
+	
 	(passwd-gid object)
 	(setresgid rgid egid sgid)
 	(initgroups user group)

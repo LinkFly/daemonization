@@ -123,13 +123,13 @@
      :child-form-after-fork #'set-global-error-handler
      :child-form-before-send-success #'(lambda () 
 					 (progn 
-					   (set-current-dir #P"/")					
+					   (set-current-dir #P"/")			
 					   (set-umask (let (umask) 
 							(if (setf umask (getf os-params :linux-umask))
 							    umask
 							    0)))
 					   (when preparation-fn (funcall preparation-fn))
-					   (enable-handling-stop-command name)					
+					   (enable-handling-stop-command name)		
 					   (when pid-file (create-pid-file pid-file))))
      :main-child-form main-fn))
 

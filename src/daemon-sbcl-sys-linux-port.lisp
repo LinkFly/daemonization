@@ -8,6 +8,7 @@
 		#:getpwnam #:getgrnam #:group-gid #:passwd-gid #:passwd-uid
 		#:setresgid #:setresuid 					
 		#:kill #:getpid #:getppid
+		#:getgid #:getgrgid #:group-name
 		#:chdir #:getcwd #:umask #:setsid #:dup #:dup2
 		#:wait)
 

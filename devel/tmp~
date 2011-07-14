@@ -1,0 +1,10 @@
+(defun test-create (num &aux pid-file)
+  (setq pid-file
+        #P"/media/WORK_PARTITION/work_dir/web-projects/dynserv/asdf-systems/daemonization/pid-files/tmppid")
+  (when (probe-file pid-file) (delete-file pid-file))
+  (log-info "!!!!!!!!!!!!!!!!!!!!!! before ~A) test create-pid-file" num)
+  (create-pid-file pid-file)
+  (log-info "!!!!!!!!!!!!!!!!! ~A) created: ~A result: ~A"
+            num
+            pid-file
+            (probe-file pid-file)))

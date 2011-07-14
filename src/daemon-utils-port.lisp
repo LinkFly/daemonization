@@ -29,10 +29,20 @@
     #+daemon.listen-privileged-ports
     (set-grant-listen-privileged-ports)))
 
-(defun-ext restrict-rights (&key new-user new-group)  
+(defun-ext is-admin-user-and-change-user-p (new-user new-group)
+  (let* ((cur-user (get-username))
+	 (cur-group (get-groupname))
+	 (is-new-user-current (equal-users cur-user new-user)))
+    (when (and (or is-new-user-current (null new-user))
+	       (and new-group (not (equal-groups cur-group new-group))))
+      (call-group-change-but-user-not-change-error new-group))
+    (and (admin-user-p cur-user)
+	 (not is-new-user-current)))) 
+     
+(defun-ext restrict-rights (&key new-user new-group)      
   #+daemon.change-user
-  (when (or new-user new-group)
-    (preparation-before-grant)    
+  (when (is-admin-user-and-change-user-p new-user new-group)  
+    (preparation-before-grant)        
     (change-user :user new-user :group new-group)
     (set-grant)))
 

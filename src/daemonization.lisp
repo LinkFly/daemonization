@@ -23,7 +23,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-constant +all-daemon-commands+ '("start" "stop" "zap" "kill" "restart" "nodaemon" "status"))
-(define-constant +conf-parameters+ '(:main-function :name :user :group :pid-file :before-parent-exit-fn :exit :os-params))
+(define-constant +conf-parameters+ '(:main-function :name :user :group :pid-file :pid-file-dir :before-parent-exit-fn :exit :os-params))
 (define-constant 
     +bad-conf-str-err+
     (format nil 
@@ -131,11 +131,14 @@
 
 	;;; Check and correct conf-params
 	(check-conf-params conf-params daemon-command)  
-	(let ((pid-file (getf conf-params :pid-file)))
+	(let ((pid-file (getf conf-params :pid-file))
+	      (pid-file-dir (getf conf-params :pid-file-dir)))	  
 	  (when pid-file
 	    (unless (absolute-path-p pid-file)
+	      (unless pid-file-dir (setf pid-file-dir (get-pid-files-dir)))
 	      (setf (getf conf-params :pid-file) 
-		    (setf pid-file (make-pathname :defaults (get-pid-files-dir) :name pid-file))))
+		    (setf pid-file (make-pathname :defaults (pathname-as-directory pid-file-dir)
+						  :name pid-file))))
 	    (when (string-equal "start" daemon-command)
 	      (if recreate-pid-file-on-start
 		  (when (probe-file pid-file) (delete-file pid-file))
@@ -175,7 +178,7 @@
 	      (values status extra-status)))))
     (error (err)
       (when (eq :child *process-type*) (error err))
-      (log-err "~A~%" err)
+      (log-err (format nil "~A" err))
       (format t "ERROR: ~A~%" err)
       (case on-error
 	(:exit-from-lisp (exit +ex-general+))
