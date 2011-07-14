@@ -165,7 +165,7 @@
 							    (funcall *fn-exit* res)))))
 					 ("start" (start-service conf-params))		   
 					 ("nodaemon" (simple-start conf-params))
-					 ("status" (status-service conf-params)))))))	  
+					 ("status" (status-service conf-params)))))))
 	  (when (eq :parent *process-type*)
 	    (analized-and-print-result result daemon-command conf-params :print-extra-status print-extra-status)
 	    (let (status extra-status)

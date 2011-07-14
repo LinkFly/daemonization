@@ -93,9 +93,9 @@
 				 (t +ex-unavailable+))))
 		   (list status (make-extra-status :pid pid 
 						   :user (when (= +ex-ok+ status)
-							   (get-username pid))
+							   (get-username))
 						   :pid-file pid-file))))))) 
-
+  
   (defun-ext kill-daemon (pid-file)
     (if (not (probe-file pid-file))
 	(cur-exit +pid-file-not-found+)
