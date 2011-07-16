@@ -84,6 +84,9 @@
       (read s)))
 
   (defun-ext create-pid-file (pid-file)    
+    (ensure-directories-exist (make-pathname :defaults pid-file
+					     :name nil
+					     :type nil))
     (when (probe-file pid-file)
       (call-file-exists-error pid-file))
     (with-open-file (out pid-file
