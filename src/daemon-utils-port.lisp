@@ -30,6 +30,8 @@
     (set-grant-listen-privileged-ports)))
 
 (defun-ext is-admin-user-and-change-user-p (new-user new-group)
+  (when (and (null new-user) (null new-group))
+    (return-from is-admin-user-and-change-user-p))
   (let* ((cur-user (get-username))
 	 (cur-group (get-groupname))
 	 (is-new-user-current (equal-users cur-user new-user)))
