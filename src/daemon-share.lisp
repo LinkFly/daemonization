@@ -6,8 +6,9 @@
 	   #:+system-name+ #:get-system-path #:absolute-path-p #:ensure-absolute-path
 	   #:call-file-exists-error #:file-exists-error #:absolute-path-p
 	   #:call-passwd-struct-not-found-error #:call-group-struct-not-found-error
-	   #:call-group-change-but-user-not-change-error
+	   #:call-group-change-but-user-not-change-error #:call-timeout-forked-process-response-error
 	   #:pathname-as-directory 
+	   #:*timeout-daemon-response*
 
 	   ;;; Struct functions
 	   #:MAKE-EXTRA-STATUS #:EXTRA-STATUS-EXIT-CODE #:EXTRA-STATUS-PID 
@@ -40,6 +41,8 @@
   "Must be nil or :parent or :child. Needed for daemonize (there reading) and fork (there set)")
 
 (defparameter *pid-files-dirname* "pid-files" "Default directory for saving pid-files")
+(defparameter *timeout-daemon-response* 5 "Second for waiting init daemon(child process 
+after fork). If daemon not response - calling timeout-forked-process-response-error")
 
 (defstruct extra-status 
   pid exit-code name pid-file user)
@@ -110,12 +113,20 @@ form."
 (define-condition passwd-struct-not-found-error (error) 
   ((user-name :initarg :user-name :accessor user-name))
   (:report (lambda (condition stream)
-	     (format stream "Not found passwd structure. User name = ~S. Bad user name?" (user-name condition)))))
+	     (format stream "Not found passwd structure. User name = ~S. Bad user name?"
+		     (user-name condition)))))
 
 (define-condition group-struct-not-found-error (error) 
   ((group-name :initarg :group-name :accessor group-name))
   (:report (lambda (condition stream)
-	     (format stream "Not found group structure. Group name = ~S. Bad group name?" (group-name condition)))))
+	     (format stream "Not found group structure. Group name = ~S. Bad group name?" 
+		     (group-name condition)))))
+
+(define-condition timeout-forked-process-response-error (error)
+  ((timeout :initarg :timeout :accessor timeout))
+  (:report (lambda (condition stream)
+	     (format stream "Created daemon not response. Very small *timeout-daemon-response*(~A) or daemon init error(not running)?"
+		     (timeout condition)))))
 
 (define-condition group-change-but-user-not-change-error (error)
   ((group-name :initarg :group-name :accessor group-name))
@@ -139,6 +150,8 @@ form."
   (error 'group-change-but-user-not-change-error
 	 :group-name group-name))
 
-
+(defun call-timeout-forked-process-response-error (timeout)
+  (error 'timeout-forked-process-response-error
+	 :timeout timeout))
 
 

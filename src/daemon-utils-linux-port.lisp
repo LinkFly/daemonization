@@ -166,13 +166,17 @@
 	       (second (multiple-value-list (wait)))))))
 
 #+daemon.as-daemon
-(defun-ext fork-and-parent-exit-on-child-signal (&optional fn-before-exit fn-exit &aux pid)  
+(defun-ext fork-and-parent-exit-on-child-signal (&optional fn-before-exit fn-exit &aux pid untime)  
   (clear-status-and-exit-code)  
   (unless (= (setf pid (fork)) 0)
     (setf *process-type* :parent)
+    (setf untime (get-universal-time))
     (loop 
        while (null (get-status))
-       do (sleep 0.1))
+       do (sleep 0.1)
+	 if (> (- (get-universal-time) untime) 
+	       *timeout-daemon-response*)
+	   do (call-timeout-forked-process-response-error *timeout-daemon-response*))
     (when fn-before-exit (funcall fn-before-exit pid (get-status)))
     (let ((status (if (= (get-status) sigusr1)
 		       +ex-ok+
