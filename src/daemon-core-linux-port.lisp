@@ -53,14 +53,18 @@
 #+daemon.as-daemon
 (progn
   (defun-ext enable-handling-stop-command (daemon-name)
-    #-sbcl (error "Not implemented on not sbcl lisps")
+    #-sbcl (error "Not implemented on not sbcl lisps")    
     #+sbcl 
     (enable-interrupt sigusr1
-		      #'(lambda (sig info context)
-			  (declare (ignore sig info context))
-			  (progn 
-			    (log-info "Stop ~A daemon" (or daemon-name ""))
-			    (cur-exit +ex-ok+)))))
+		      (let ((fn-log-info-val *fn-log-info*)
+			    (fn-log-trace-val *fn-log-trace*)) 
+			#'(lambda (sig info context)
+			    (declare (ignore sig info context))
+			    (let ((*fn-log-info* fn-log-info-val)
+				  (*fn-log-trace* fn-log-trace-val))
+			      (progn
+				(log-info "Stop~A daemon" (if daemon-name (concatenate 'string " " daemon-name) ""))
+				(cur-exit +ex-ok+)))))))
 
   (defun-ext zap-daemon (pid-file)
     (if (not (probe-file pid-file))
@@ -104,7 +108,8 @@
 	  (delete-file pid-file)
 	  (cur-exit +ex-ok+ (make-extra-status :pid pid :pid-file pid-file)))))
  
-  (defun-ext start-daemon (name pid-file &key configure-rights-fn preparation-fn main-fn before-parent-exit-fn os-params)
+  (defun-ext start-daemon (name pid-file 
+			   &key configure-rights-fn preparation-fn before-init-fn main-fn before-parent-exit-fn os-params)
     (fork-this-process
      :fn-exit #'(lambda (&optional (status +ex-ok+) extra-status)
 		  (funcall #'cur-exit
@@ -120,7 +125,9 @@
 			     extra-status)))
      :parent-form-before-fork configure-rights-fn
      :parent-form-before-exit before-parent-exit-fn
-     :child-form-after-fork #'set-global-error-handler
+     :child-form-after-fork #'(lambda ()
+				(when before-init-fn (funcall before-init-fn))
+				(set-global-error-handler))
      :child-form-before-send-success #'(lambda () 
 					 (progn 
 					   (set-current-dir #P"/")			

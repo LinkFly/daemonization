@@ -66,10 +66,12 @@
 (defun daemon-cmd (cmd)
   (apply #'daemonization:daemonized	 
 	 (case *test-mode*
-	   (:user (list *daemon-conf* cmd 
+	   (:user (list *daemon-conf*
+			cmd
 			:on-error :as-ignore-errors 
 			:recreate-pid-file-on-start t))
-	   (:root (list *root-daemon-conf* cmd 
+	   (:root (list *root-daemon-conf*
+			cmd
 			:print-extra-status t 
 			:on-error :as-ignore-errors 
 			:recreate-pid-file-on-start t)))))
@@ -105,9 +107,13 @@
 				    :if-does-not-exist :create
 				    :if-exists :supersede))
 	 (*standard-output* (make-broadcast-stream prompts-file-stream *standard-output*))
-	 (*fn-log-info* #'print-syslog)
-	 (*fn-log-err* #'print-syslog)
-	 (*fn-log-trace* #'print-syslog))
+	 (fn-wrapped-print-syslog (let ((test-mode-val *test-mode*))
+				    #'(lambda (fmt-str &rest args) 
+					(let ((*test-mode* test-mode-val))
+					  (apply #'print-syslog fmt-str args)))))
+	 (*fn-log-info* fn-wrapped-print-syslog)
+	 (*fn-log-err* fn-wrapped-print-syslog)
+	 (*fn-log-trace* fn-wrapped-print-syslog))
     (ensure-no-syslog-file)
     (princ "Tests daemonized ... ")
     (terpri)
@@ -144,9 +150,13 @@
 				    :if-does-not-exist :create
 				    :if-exists :supersede))
 	 (*standard-output* (make-broadcast-stream prompts-file-stream *standard-output*))
-	 (*fn-log-info* #'print-syslog)
-	 (*fn-log-err* #'print-syslog)
-	 (*fn-log-trace* #'print-syslog))    
+	 (fn-wrapped-print-syslog (let ((test-mode-val *test-mode*))
+				    #'(lambda (fmt-str &rest args) 
+					(let ((*test-mode* test-mode-val))
+					  (apply #'print-syslog fmt-str args)))))
+	 (*fn-log-info* fn-wrapped-print-syslog)
+	 (*fn-log-err* fn-wrapped-print-syslog)
+	 (*fn-log-trace* fn-wrapped-print-syslog))
     (ensure-no-syslog-file)
     (recreate-root-syslog-file)    
     (princ "Tests daemonized (with is changing of user) ... ")

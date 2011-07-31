@@ -19,13 +19,14 @@
 	   #:log-info #:log-err #:defun-ext #:wrap-log
 	   #:*print-log-info* #:*print-log-err*
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
-	   #:*print-call #:*print-called-form-with-result*
+	   #:*print-call* #:*print-called-form-with-result*
 	   #:*print-pid*
 	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
 	   #:*print-log-datetime* #:*fn-log-pid*
 	   #:*disabled-functions-logging*
 	   #:*disabled-layers-logging*
+	   #:*fn-log-info-load*
 
 	   ;; for finding pid-files 
 	   #:*pid-files-dirname* #:get-pid-files-dir))
@@ -37,9 +38,10 @@
      ,@(when doc (list doc))))
 
 (define-constant +system-name+ :daemonization)
+
+(defparameter *fn-log-info-load* *fn-log-info* "Function for logging at load time")
 (defparameter *process-type* nil
   "Must be nil or :parent or :child. Needed for daemonize (there reading) and fork (there set)")
-
 (defparameter *pid-files-dirname* "pid-files" "Default directory for saving pid-files")
 (defparameter *timeout-daemon-response* 5 "Second for waiting init daemon(child process 
 after fork). If daemon not response - calling timeout-forked-process-response-error")

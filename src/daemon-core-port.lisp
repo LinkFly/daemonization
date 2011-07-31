@@ -51,7 +51,7 @@
 			      (restrict-rights :new-user (getf params :user) 
 					       :new-group (getf params :group)))
      :preparation-fn #'isolate-process
-     
+     :before-init-fn (getf params :before-init-fn)
      :main-fn (getf params :main-function)
      :os-params (getf params :os-params)))
   

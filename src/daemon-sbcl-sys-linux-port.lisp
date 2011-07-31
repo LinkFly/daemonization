@@ -52,12 +52,17 @@
 
 (defparameter daemon-share:*fn-log-info* #'(lambda (fmt-str &rest args)
 				(syslog log-info (add-daemon-log (apply #'format nil fmt-str args)))))
+(defparameter daemon-share:*fn-log-info-load* nil)
 (defparameter daemon-share:*fn-log-err* #'(lambda (fmt-str &rest args)
 				(syslog log-err (add-daemon-log (concatenate 'string "ERROR: " (apply #'format nil fmt-str args))))))
 (defparameter daemon-share:*fn-log-trace* #'(lambda (fmt-str)
 				(syslog log-info "~A" (add-daemon-log fmt-str))))
 (defparameter daemon-share:*fn-log-pid* #'(lambda () (format nil ":pid ~A" (getpid))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro log-info-load (log-str &rest args) 
+  `(let ((*fn-log-info* *fn-log-info-load*))
+     (log-info ,log-str ,@args)))
 
 ;;; Correct open (for handling mode-t param equal nil
 (defun open (pathname flags &optional mode)
@@ -91,12 +96,12 @@
   (setq fn-str-name (string-upcase 
 		     (substitute #\- #\_ name)))
   `(progn 
-     (log-info "try defining ~A ..." ,name)       
+     (log-info-load "try defining ~A ..." ,name)       
      (sb-posix::define-call ,name ,@args)
      (let ((fn-sym (find-symbol (string-upcase ,fn-str-name) :sb-posix))
 	   (fn-using-sym (read-from-string ,fn-str-name)))
        (setf (symbol-function fn-using-sym) (symbol-function fn-sym))
-       (log-info " ... OK. (symbol-function '~S) => ~S"
+       (log-info-load " ... OK. (symbol-function '~S) => ~S"
 	       fn-using-sym (symbol-function fn-using-sym)))))
 
 ;; Define initgroups

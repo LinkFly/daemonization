@@ -1,11 +1,14 @@
 (defpackage :daemonization-utils
   (:use :cl)
+  (:import-from :daemon-share #:*print-call*)
   (:import-from :daemon-utils-port #:get-args #:getpid #:recreate-file-allow-write-other)
   (:export #:get-args #:get-proc-id #:recreate-file-allow-write-other))
 
 (in-package :daemonization-utils)
 
-(setf (symbol-function 'get-proc-id) #'getpid) 
+(defun get-proc-id ()
+  (let ((*print-call* nil)) (getpid)))
+
 #| 
 daemoniation.lisp:
 check-daemon-command

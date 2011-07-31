@@ -3,7 +3,7 @@
   (:export #:log-info #:log-err #:defun-ext #:wrap-log
 	   #:*print-log-info* #:*print-log-err*
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
-	   #:*print-call #:*print-called-form-with-result*
+	   #:*print-call* #:*print-called-form-with-result*
 	   #:*print-pid*
 	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
@@ -137,14 +137,17 @@
   (funcall #'logging (get-fn-log-trace) format-str))
 
 (defmacro log-info (format-str &rest args)
-  `(when *print-log-info* 
-     (let ((*def-in-package* (load-time-value *package*)))     
-       (logging (get-fn-log-info) (format nil "~S" ,format-str) ,@args))))
+  `(let ((fn-log (get-fn-log-info)))
+     (when (and fn-log *print-log-info*)
+       (let ((*def-in-package* (load-time-value *package*)))     
+	 (logging fn-log (format nil "~S" ,format-str) ,@args)))))
 
 (defmacro log-err (format-str &rest args)
-  `(when *print-log-err*
-     (let ((*def-in-package* (load-time-value *package*)))     
-       (logging (get-fn-log-err) (list (format nil "~S" ,format-str) :before-message ":ERROR") ,@args))))
+  `(let ((fn-log (get-fn-log-err)))
+     (when (and fn-log *print-log-err*)
+       (let ((*def-in-package* (load-time-value *package*)))     
+	 (logging fn-log (list (format nil "~S" ,format-str)
+			       :before-message ":ERROR") ,@args)))))
 
 (defun as-string (sexpr)
   (unless (stringp sexpr)
