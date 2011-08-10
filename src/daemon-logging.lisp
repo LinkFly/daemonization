@@ -9,13 +9,16 @@
 	   #:add-daemon-log #:get-daemon-log-list
 	   #:*print-log-datetime* #:*fn-log-pid*
 	   #:*disabled-functions-logging*
-	   #:*disabled-layers-logging*))
+	   #:*disabled-layers-logging*
+	   #:*process-type*))
 
 (in-package :daemon-logging)
 
 ;;; Logging configure parameters
+(declaim (type fixnum *log-indent* *log-indent-size*))
 (defparameter *log-indent* 0)
 (defparameter *log-indent-size* 2)
+
 (defparameter *print-log-info* t)
 (defparameter *print-log-err* t)
 (defparameter *print-log-layer* t)
@@ -30,6 +33,7 @@
 (defparameter *print-pid* t)
 (defparameter *simple-log* nil)
 
+(defparameter *process-type* nil)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Logging for actions on differently layers, for using
@@ -53,7 +57,11 @@
 ;;; For defun-ext and wrap-fmt-str ;;;;;;;;;;;;;;;;;;
 (defparameter *def-in-package* nil)
 (defparameter *trace-fn* nil)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; For pointing logging mode ;;;;;;;;;;;;;;;;;;;;;;
+(defparameter *log-mode* :info "Must be (or :trace :info :error)")
+(defparameter *trace-type* nil "Must be (or :call :result)")
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun add-daemon-log (log)
   (push log *daemon-logs*)
@@ -83,9 +91,8 @@
 (defun get-log-layer ()
   (let ((layer-sym (when *def-in-package* (find-symbol (symbol-name '+LOG-LAYER+) *def-in-package*))))
     (if (and layer-sym (boundp layer-sym)) 
-	(format nil "~S" (symbol-value layer-sym))
-	(concatenate 'string ":" (package-name (or *def-in-package* *package*))))))
-
+	(symbol-value layer-sym)
+	(read-from-string (concatenate 'string ":" (package-name (or *def-in-package* *package*)))))))
 
 ;;; Checking
 ;(get-log-layer)
@@ -102,71 +109,86 @@
       (get-decoded-time)
     (format nil "~D.~2,'0D.~2,'0D ~2,'0D:~2,'0D:~2,'0D" year month date hour min sec)))
 
-(defun wrap-fmt-str (fmt-str &key before-message)
+(defmacro create-log-plist (&rest details)
+  (cons 'append 
+	(loop 
+	   for detail in details
+	   for key = (first detail)
+	   for message = (second detail)
+	   if (= 2 (length detail)) do (setq detail (append detail '(t)))
+	   collect `(when ,(third detail) (list ,key ,message)))))
+
+(defun wrap-fmt-str (fmt-str &key extra-fmt-str (indent "") &aux log-plist)
   (when *simple-log* 
     (return-from wrap-fmt-str fmt-str))
+  (setq log-plist
+	(create-log-plist
+	 (:daemonization *log-mode*)
+	 (:message fmt-str (member *log-mode* '(:info :error)))
+	 (:call fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :call) *print-call*))
+	 (:result fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :result) *print-call*))
+	 (:called-form extra-fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :result) *print-call* *print-called-form-with-result*))
+	 (:datetime (get-datetime) *print-log-datetime*)
+	 (:pid (funcall *fn-log-pid*) *print-pid*)
+	 (:layer (get-log-layer) *print-log-layer*)
+	 (:trace-fn *trace-fn*)
+	 (:type-proc *process-type*)))
   (format nil
-	  "~%(:DAEMONIZATION~A~A~A~26A~A ~A~A~A)"
-	  (if before-message
-	      (format nil " ~A " before-message)
-	      "")
-	  (if *print-log-datetime* 
-	      (format nil " ~S " (get-datetime))
-	      "")
-	  (if (and *print-pid* *fn-log-pid*)
-	      (format nil " ~A " (funcall *fn-log-pid*))
-	      "")
-	  (if *print-log-layer* 
-	      (format nil " ~A" (get-log-layer))
-	      "")
-	  (if *log-prefix* 
-	      (format nil " ~S" *log-prefix*)
-	      "")	
-	  (if (and *print-trace-function* *trace-fn*)
-	      (format nil ":TRACE-FN ~A " *trace-fn*)
-	      "")
-	  (get-indent)	  
-	  fmt-str))
+	  "~%(~{~A~})"
+	  (loop 
+	     with begin-str = (format nil 
+				      "~S ~A"
+				      (first log-plist) 
+				      (if (eq :info (second log-plist))
+					  (progn (setq log-plist (rest (rest log-plist)))
+						 (format nil "~6A ~A ~S" "" indent (second log-plist)))
+					  (format nil "~6S ~A" (second log-plist) indent)))
+	     for pair on (rest (rest log-plist)) by #'cddr 
+	     collect (if (member (first pair) '(:call :result :called-form))
+			 (format nil " ~S ~A" (first pair) (second pair))
+			 (format nil " ~S ~S" (first pair) (second pair))) 
+	     into result 
+	     finally (return (cons begin-str result)))))
 
-(defun logging (fn-log format-str-or-list &rest args)
-  (unless (consp format-str-or-list) 
-    (setq format-str-or-list (list format-str-or-list)))
-  (apply fn-log (apply #'wrap-fmt-str format-str-or-list) args))
-
-(defun syslog-trace (format-str)  
-  (funcall #'logging (get-fn-log-trace) format-str))
+(defun logging (fn-log format-str &rest args)
+  (let ((*print-pretty* nil)) 
+    (apply fn-log (funcall #'wrap-fmt-str format-str :indent (get-indent)) args)))
 
 (defmacro log-info (format-str &rest args)
   `(let ((fn-log (get-fn-log-info)))
      (when (and fn-log *print-log-info*)
-       (let ((*def-in-package* (load-time-value *package*)))     
-	 (logging fn-log (format nil "~S" ,format-str) ,@args)))))
+       (let ((*def-in-package* (load-time-value *package*))
+	     (*log-mode* :info))
+	 (logging fn-log ,format-str ,@args)))))
 
 (defmacro log-err (format-str &rest args)
   `(let ((fn-log (get-fn-log-err)))
      (when (and fn-log *print-log-err*)
-       (let ((*def-in-package* (load-time-value *package*)))     
-	 (logging fn-log (list (format nil "~S" ,format-str)
-			       :before-message ":ERROR") ,@args)))))
+       (let ((*def-in-package* (load-time-value *package*))
+	     (*log-mode* :error))   
+	 (logging fn-log ,format-str ,@args)))))
 
-(defun as-string (sexpr)
-  (unless (stringp sexpr)
-    (return-from as-string (format nil "~S" sexpr)))
-  sexpr)
-
-(defun syslog-call-into (form)
-  (syslog-trace (format nil ":CALL ~A" (as-string form)))
+(defun syslog-trace (form-str &key extra-form-str trace-type)
+  (declare (type (member :call :result) trace-type)
+	   (type string form-str)
+	   (type (or null string) extra-form-str))
+  (let ((*log-mode* :trace)
+	(*trace-type* trace-type)
+	(*print-pretty* nil))
+    (funcall (get-fn-log-trace) (funcall #'wrap-fmt-str
+					 form-str
+					 :extra-fmt-str extra-form-str
+					 :indent (get-indent)))))
+			        
+(defun syslog-call-into (form-str)
+  (syslog-trace form-str :trace-type :call)
   (incf *log-indent* *log-indent-size*))
   
-(defun syslog-call-out (result &optional form)  
+(defun syslog-call-out (result-form-str &optional called-form-str)  
   (decf *log-indent* *log-indent-size*)
   (if (< *log-indent* 0)
       (error "*log-indent* not must be less zero. Not correct log operation."))
-  (syslog-trace (format nil ":RESULT ~A ~A"
-			result 
-			(if form 
-			    (concatenate 'string ":CALLED-FORM " (as-string form))			    
-			    ""))))
+  (syslog-trace result-form-str :extra-form-str called-form-str :trace-type :result))
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

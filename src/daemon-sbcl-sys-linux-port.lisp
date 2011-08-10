@@ -57,7 +57,7 @@
 				(syslog log-err (add-daemon-log (concatenate 'string "ERROR: " (apply #'format nil fmt-str args))))))
 (defparameter daemon-share:*fn-log-trace* #'(lambda (fmt-str)
 				(syslog log-info "~A" (add-daemon-log fmt-str))))
-(defparameter daemon-share:*fn-log-pid* #'(lambda () (format nil ":pid ~A" (getpid))))
+(defparameter daemon-share:*fn-log-pid* #'getpid)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro log-info-load (log-str &rest args) 
@@ -73,8 +73,8 @@
 
 (defun fork ()
   (let ((fork-res (sb-posix:fork)))
-    (setf *log-prefix* 
-	  (if (= fork-res 0) :child-proc :parent-proc))
+    (setf *process-type*
+	  (if (= fork-res 0) :child :parent))
     (log-info "-- here was fork --")
     fork-res))
 

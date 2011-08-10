@@ -1,6 +1,8 @@
 (defpackage daemon-share 
   (:use :cl :daemon-features :daemon-logging)
-  (:export #:define-constant #:*process-type* #:*fn-exit*
+  (:export #:define-constant 
+	   #:*process-type* ;;Must be nil or :parent or :child. Needed for daemonize (there reading) and fork (there set)")
+	   #:*fn-exit*
 	   #:+ex-ok+ #:+ex-general+ #:+ex-software+ #:+ex-unavailable+ #:+ex-cantcreate+
 	   #:+pid-file-not-found+ #:+pid-file-exists+ #:+process-not-exists+
 	   #:+system-name+ #:get-system-path #:absolute-path-p #:ensure-absolute-path
@@ -40,8 +42,6 @@
 (define-constant +system-name+ :daemonization)
 
 (defparameter *fn-log-info-load* *fn-log-info* "Function for logging at load time")
-(defparameter *process-type* nil
-  "Must be nil or :parent or :child. Needed for daemonize (there reading) and fork (there set)")
 (defparameter *pid-files-dirname* "pid-files" "Default directory for saving pid-files")
 (defparameter *timeout-daemon-response* 5 "Second for waiting init daemon(child process 
 after fork). If daemon not response - calling timeout-forked-process-response-error")
