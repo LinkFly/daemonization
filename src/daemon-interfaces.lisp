@@ -7,12 +7,13 @@
 (in-package :daemon-interfaces)
 
 (eval-when (:compile-toplevel :load-toplevel)
-  (defmacro define-provider-package (pkg-name pkg-implementor (&key use get-fn-syms-form get-constants-form))
+  (defmacro define-provider-package (pkg-name pkg-implementor (&key use get-fn-syms-form get-constants-form export))
     `(defpackage ,pkg-name
        (:use ,pkg-implementor ,@use)
        (:shadow ,@(eval get-fn-syms-form))
        (:export ,@(eval get-fn-syms-form)
-		,@(eval get-constants-form))))
+		,@(eval get-constants-form)
+		,@export)))
 
 ;;; For shadowing in daemon-unix-api 
   (define-constant +for-daemon-unix-functions+

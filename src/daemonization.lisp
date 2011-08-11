@@ -34,6 +34,12 @@
     (format nil "Bad daemon command. Command must be one of the ~S"
 	    +all-daemon-commands+))
 
+;;; Initialization ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(logging-init)
+(import-sys-functions-and-constants)
+(define-unix-functions)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun-ext check-daemon-command (cmd)
   (log-info "Check daemon command ...")
   (unless (find cmd +all-daemon-commands+ :test #'string-equal)

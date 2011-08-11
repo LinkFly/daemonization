@@ -2,7 +2,7 @@
   (:use :cl :daemon-share :daemon-unix-api-port :daemon-utils-linux-port)
   (:shadowing-import-from :daemon-unix-api-port #:open #:close)
   #+sbcl
-  (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt)
+  (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt #:import-sys-functions-and-constants)
   #-sbcl 
   #.(error "Not implemented for non sbcl lisp systems")  
   (:export #:get-daemon-command
@@ -12,7 +12,11 @@
 	   #:kill-daemon	   
 	   #:start-daemon
 	   #:start-as-no-daemon
-	   #:status-daemon))
+	   #:status-daemon
+
+	   #:syslog-info #:syslog-err
+	   #:import-sys-functions-and-constants
+	   #:define-unix-functions))
 
 (in-package :daemon-core-linux-port)
 
@@ -22,6 +26,12 @@
 ;(defun-ext g (x) (log-info "this g") (* x x))
 ;(f 3 4 :z 6)
 ;;;;;;;;;;;;;;;;;;;
+
+(defun syslog-info (fmt-str &rest args)
+  (apply syslog log-info fmt-str args))
+
+(defun syslog-err (fmt-str &rest args)
+  (apply syslog log-err fmt-str args))
 
 #+daemon.as-daemon
 (defun-ext set-global-error-handler ()  

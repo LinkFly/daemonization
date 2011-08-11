@@ -6,7 +6,8 @@
   #.(error "Not implemented for non sbcl lisp systems")
   (:use (:cl :daemon-share :daemon-interfaces)
    :get-fn-syms-form (daemon-interfaces:get-unix-fn-syms)
-   :get-constants-form (daemon-interfaces:get-unix-constants)))
+   :get-constants-form (daemon-interfaces:get-unix-constants)
+   :export (#:define-unix-functions)))
 
 (in-package :daemon-unix-api-port)
 
@@ -37,9 +38,10 @@
 						   args)))))))))
 
 ;(macroexpand-1 '(recreate-shadow-functions :daemon-sbcl-sys-linux-port (daemon-interfaces:get-unix-functions)))
-(recreate-shadow-functions 
+(defun define-unix-functions ()
+  (recreate-shadow-functions 
    #+sbcl
-  :daemon-sbcl-sys-linux-port
-  #-sbcl 
-  #.(error "Not implemented for non sbcl lisp systems")
-  (daemon-interfaces:get-unix-functions))
+   :daemon-sbcl-sys-linux-port
+   #-sbcl 
+   #.(error "Not implemented for non sbcl lisp systems")
+   (daemon-interfaces:get-unix-functions)))

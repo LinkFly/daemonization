@@ -10,13 +10,24 @@
 	   #:kill-service
 	   #:start-service
 	   #:simple-start
-	   #:status-service))
+	   #:status-service
+
+	   #:logging-init
+	   #:import-sys-functions-and-constants
+	   #:define-unix-functions))
 
 (in-package :daemon-core-port)
 
-#|(defun get-daemon-command ()
-  (get-first-arg))
-|#
+(defun logging-init ()
+
+  (defparameter *fn-log-info* #'(lambda (fmt-str &rest args)
+				  (syslog-info (add-daemon-log (apply #'format nil fmt-str args)))))
+  (defparameter *fn-log-info-load* nil)
+  (defparameter *fn-log-err* #'(lambda (fmt-str &rest args)
+				 (syslog-err (add-daemon-log (concatenate 'string "ERROR: " (apply #'format nil fmt-str args))))))
+  (defparameter *fn-log-trace* #'(lambda (fmt-str)
+				   (syslog-info "~A" (add-daemon-log fmt-str))))
+  (defparameter *fn-log-pid* #'(lambda () (let ((*print-call* nil)) (getpid)))))
 
 #+daemon.as-daemon
 (progn 

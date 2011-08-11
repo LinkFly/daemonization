@@ -36,35 +36,21 @@
 	   #:dup #:dup2
 	   #:tiocnotty #:syslog	   
 	   #:wait #:get-args
-	   #:stat #:stat-uid #:passwd-name #:getpwuid))
+	   #:stat #:stat-uid #:passwd-name #:getpwuid
+	   #:import-sys-functions-and-constants))
 
 (in-package :daemon-sbcl-sys-linux-port)
 
 (defun get-args () *posix-argv*)
 
 ;;;;;;;;;;;;;;;;;;;;;; Logging ;;;;;;;;;;;;;;;;;;;;;;
-
-;;; Correct log-info and log-err (function from :daemon-share)
-(eval-when (:compile-toplevel)
-  (setf (macro-function 'log-info) (macro-function 'daemon-share:log-info))
-  (setf (macro-function 'log-err) (macro-function 'daemon-share:log-err)))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defparameter daemon-share:*fn-log-info* #'(lambda (fmt-str &rest args)
-				(syslog log-info (add-daemon-log (apply #'format nil fmt-str args)))))
-(defparameter daemon-share:*fn-log-info-load* nil)
-(defparameter daemon-share:*fn-log-err* #'(lambda (fmt-str &rest args)
-				(syslog log-err (add-daemon-log (concatenate 'string "ERROR: " (apply #'format nil fmt-str args))))))
-(defparameter daemon-share:*fn-log-trace* #'(lambda (fmt-str)
-				(syslog log-info "~A" (add-daemon-log fmt-str))))
-(defparameter daemon-share:*fn-log-pid* #'getpid)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defmacro log-info-load (log-str &rest args) 
   `(let ((*fn-log-info* *fn-log-info-load*))
-     (log-info ,log-str ,@args)))
+     (daemon-share:log-info ,log-str ,@args)
+     ))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; Correct open (for handling mode-t param equal nil
+;;; Correct open (for handling mode-t param equal nil)
 (defun open (pathname flags &optional mode)
   (apply #'sb-posix:open 
 	 pathname
@@ -75,11 +61,10 @@
   (let ((fork-res (sb-posix:fork)))
     (setf *process-type*
 	  (if (= fork-res 0) :child :parent))
-    (log-info "-- here was fork --")
+    (daemon-share:log-info "-- here was fork --")
     fork-res))
 
 ;;;;;;;;;;;;;;;;;; Compilation stage ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 ;; For definition cap-from-text, cap-set-proc and cap-free
 #+daemon.listen-privileged-ports
@@ -104,6 +89,9 @@
        (log-info-load " ... OK. (symbol-function '~S) => ~S"
 	       fn-using-sym (symbol-function fn-using-sym)))))
 
+(defun import-sys-functions-and-constants ()
+  (let ((*package* (find-package :daemon-sbcl-sys-linux-port)))
+
 ;; Define initgroups
 #+daemon.change-user
 (def-alien-call "initgroups" int minusp (user c-string) (group sb-posix::gid-t))
@@ -124,10 +112,9 @@
 ;; Define functions: "grantpt", "unlockpt", and "ptsname". Also "tiocnotty" constant.
 #+daemon.as-daemon
 (progn 
-  (progn 
-    (def-alien-call "grantpt" int minusp (fd sb-posix::file-descriptor))
-    (def-alien-call "unlockpt" int minusp (fd sb-posix::file-descriptor))
-    (def-alien-call "ptsname" c-string null (fd sb-posix::file-descriptor)))
+  (def-alien-call "grantpt" int minusp (fd sb-posix::file-descriptor))
+  (def-alien-call "unlockpt" int minusp (fd sb-posix::file-descriptor))
+  (def-alien-call "ptsname" c-string null (fd sb-posix::file-descriptor))
     
   (let* ((pkg :sb-unix)
 	 (sym (find-symbol "TIOCNOTTY" pkg)))
@@ -136,5 +123,5 @@
 	  (symbol-value sym)
 	  21538)))	 
   ) ;progn for :daemon.as-daemon feature
-
+)) ;let, defun import-sys-functions-and-constants
 
