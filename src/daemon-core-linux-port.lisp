@@ -28,10 +28,12 @@
 ;;;;;;;;;;;;;;;;;;;
 
 (defun syslog-info (fmt-str &rest args)
-  (apply 'syslog log-info-constant fmt-str args))
+  (let ((*print-call* nil))
+    (apply 'syslog log-info-constant fmt-str args)))
 
 (defun syslog-err (fmt-str &rest args)
-  (apply 'syslog log-err-constant fmt-str args))
+  (let ((*print-call* nil))
+    (apply 'syslog log-err-constant fmt-str args)))
 
 #+daemon.as-daemon
 (defun-ext set-global-error-handler ()  

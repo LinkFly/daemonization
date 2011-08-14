@@ -17,6 +17,7 @@ Options:
 <command> - one of the commands: ~{~A | ~}help" 
 	  daemonization:+conf-parameters+
 	  daemonization:+all-daemon-commands+))
+
 (defun print-help-message ()
   (format t "~&~A~%" +help-message+))
 
@@ -34,3 +35,5 @@ Options:
 			       :type nil
 			       :directory (pathname-directory *load-pathname*))))
 	(daemonization:daemonized conf-file command :on-error :exit-from-lisp))))
+
+
