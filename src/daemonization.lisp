@@ -122,12 +122,12 @@
 
 (defun-ext daemonized (conf-params daemon-command &key (on-error :call-error) recreate-pid-file-on-start print-extra-status 
 		       &aux (on-error-variants '(:return-error :as-ignore-errors :call-error :exit-from-lisp)))
+  (let ((pathname (get-system-path)))
+    (unless (check-normal-start-pathname pathname) (call-bad-start-pathname-error pathname)))
   (when (consp conf-params) (setf conf-params (copy-list conf-params)))  
   (handler-case 
       (progn 
-	;; Checking normal parameters, command, and start/load pathname 
-	(let ((pathname (get-system-path)))
-	  (unless (check-normal-start-pathname pathname) (call-bad-start-pathname-error pathname)))
+	;; Checking normal parameters, command, and start/load pathname 	
 	(assert (member on-error on-error-variants)
 		() 
 		"Bad keyword parameter on-error = ~S. Must be one of the ~S" on-error on-error-variants)
