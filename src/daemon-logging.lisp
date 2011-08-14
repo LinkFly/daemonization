@@ -117,7 +117,7 @@
 	   for message = (second detail)
 	   if (= 2 (length detail)) do (setq detail (append detail '(t)))
 	   collect `(when ,(third detail) (list ,key ,message)))))
-
+	  
 (defun wrap-fmt-str (fmt-str &key extra-fmt-str (indent "") &aux log-plist)
   (when *simple-log* 
     (return-from wrap-fmt-str fmt-str))
@@ -133,22 +133,26 @@
 	 (:layer (get-log-layer) *print-log-layer*)
 	 (:trace-fn *trace-fn*)
 	 (:type-proc *process-type*)))
-  (format nil
-	  "~%(~{~A~})"
-	  (loop 
-	     with begin-str = (format nil 
-				      "~S ~A"
-				      (first log-plist) 
-				      (if (eq :info (second log-plist))
-					  (progn (setq log-plist (rest (rest log-plist)))
-						 (format nil "~6A ~A ~S" "" indent (second log-plist)))
-					  (format nil "~6S ~A" (second log-plist) indent)))
-	     for pair on (rest (rest log-plist)) by #'cddr 
-	     collect (if (member (first pair) '(:call :result :called-form))
-			 (format nil " ~S ~A" (first pair) (second pair))
-			 (format nil " ~S ~S" (first pair) (second pair))) 
-	     into result 
-	     finally (return (cons begin-str result)))))
+  (apply 'concatenate 
+	 (append `(string ,(string #\Newline) "(")
+		 (loop 
+		    with begin-str = (format nil 
+					     "~S ~A"
+					     (first log-plist) 
+					     (if (member (second log-plist) '(:info :error))
+						 (progn (setq log-plist (rest (rest log-plist)))
+							(concatenate 'string 
+								     (format nil "~6A ~A \"" "" indent)
+								     (second log-plist)
+								     "\""))
+						 (format nil "~6S ~A" (second log-plist) indent)))
+		    for pair on (rest (rest log-plist)) by #'cddr 
+		    collect (if (member (first pair) '(:call :result :called-form))
+				(format nil " ~S ~A" (first pair) (second pair))
+				(format nil " ~S ~S" (first pair) (second pair))) 
+		    into result 
+		    finally (return (cons begin-str result)))
+		 (list ")"))))
 
 (defun logging (fn-log format-str &rest args)
   (let ((*print-pretty* nil)) 
