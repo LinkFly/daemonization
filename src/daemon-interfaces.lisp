@@ -16,8 +16,10 @@
 		,@export)))
 
 ;;; For shadowing in daemon-unix-api 
-  (define-constant +for-daemon-unix-functions+
-      '((open pathname flags &optional mode)
+  (define-constant +for-daemon-unix-functions+  ;(makunbound '+for-daemon-unix-functions+)
+      '((syslog priority format &rest args)
+
+	(open pathname flags &optional mode)
 	(ioctl fd cmd &optional arg)
 	(close fd)
 	(grantpt fd)
@@ -29,7 +31,7 @@
 	(getpwnam login-name)
 
 	(fork)      
-	(exit &optional (status ex-ok))
+	(exit &optional (status +ex-ok+))
 	(kill pid signal)
 
 	(getcwd)

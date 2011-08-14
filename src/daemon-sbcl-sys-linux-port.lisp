@@ -37,10 +37,26 @@
 	   #:tiocnotty #:syslog	   
 	   #:wait #:get-args
 	   #:stat #:stat-uid #:passwd-name #:getpwuid
-	   #:import-sys-functions-and-constants))
+	   #:import-sys-functions-and-constants
+
+	   #:log-info-constant #:log-err-constant)) 
 
 (in-package :daemon-sbcl-sys-linux-port)
 
+(define-symbol-macro log-info-constant #.(find-symbol (symbol-name 'log-info) *package*))
+(define-symbol-macro log-err-constant #.(find-symbol (symbol-name 'log-err) *package*))
+
+#+daemon.listen-privileged-ports 
+(defconstant +PR_SET_KEEPCAPS+ 8)
+
+#+daemon.as-daemon
+(let* ((pkg :sb-unix)
+       (sym (find-symbol "TIOCNOTTY" pkg)))
+  (defconstant tiocnotty
+    (if (and sym (boundp sym))
+	(symbol-value sym)
+	21538)))
+  
 (defun get-args () *posix-argv*)
 
 ;;;;;;;;;;;;;;;;;;;;;; Logging ;;;;;;;;;;;;;;;;;;;;;;
@@ -66,7 +82,7 @@
 
 ;;;;;;;;;;;;;;;;;; Compilation stage ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; For definition cap-from-text, cap-set-proc and cap-free
+;; load library "libcap" for definition cap-from-text, cap-set-proc and cap-free
 #+daemon.listen-privileged-ports
 (eval-when (:compile-toplevel :load-toplevel)
   (defparameter *libcap-probable-files* '("/lib/libcap.so.2" "/lib/libcap.so"))
@@ -74,7 +90,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;
-(defun exit (&optional (status ex-ok))
+(defun exit (&optional (status +ex-ok+))
   (quit :unix-status status))
 
 (defmacro def-alien-call (name &rest args &aux fn-str-name)
@@ -96,11 +112,10 @@
 #+daemon.change-user
 (def-alien-call "initgroups" int minusp (user c-string) (group sb-posix::gid-t))
      
-;; Define constant +PR_SET_KEEPCAPS+, functions prctl, load library "libcap", and
+;; Define constant +PR_SET_KEEPCAPS+ (already defined in begin), functions prctl,
 ;;  functions for grant capabilities: cap-from-text, cap-set-proc, cap-free
 #+daemon.listen-privileged-ports 
 (progn 
-  (defconstant +PR_SET_KEEPCAPS+ 8)
   (def-alien-call "prctl" int minusp (option int) (arg int))
   ;; For compilation following functions, "libcap.so" library must be loaded into 
   ;; compiling system (look at the begining)
@@ -109,19 +124,13 @@
   (def-alien-call "cap_free" int minusp (cap_p (* char)))
   ) ;progn for :daemon.listen-privileged-ports feature
 
-;; Define functions: "grantpt", "unlockpt", and "ptsname". Also "tiocnotty" constant.
+;; Define functions: "grantpt", "unlockpt", and "ptsname". 
+;; Also "tiocnotty" constant (already defined in begin).
 #+daemon.as-daemon
 (progn 
   (def-alien-call "grantpt" int minusp (fd sb-posix::file-descriptor))
   (def-alien-call "unlockpt" int minusp (fd sb-posix::file-descriptor))
-  (def-alien-call "ptsname" c-string null (fd sb-posix::file-descriptor))
-    
-  (let* ((pkg :sb-unix)
-	 (sym (find-symbol "TIOCNOTTY" pkg)))
-    (defconstant tiocnotty
-      (if (and sym (boundp sym))
-	  (symbol-value sym)
-	  21538)))	 
+  (def-alien-call "ptsname" c-string null (fd sb-posix::file-descriptor))      	 
   ) ;progn for :daemon.as-daemon feature
 )) ;let, defun import-sys-functions-and-constants
 

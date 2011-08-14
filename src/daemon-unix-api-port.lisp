@@ -11,31 +11,49 @@
 
 (in-package :daemon-unix-api-port)
 
-(defmacro recreate-shadow-functions (package functions-with-args)
+(defmacro recreate-shadow-functions (package functions-with-args &aux (cur-package (load-time-value *package*)))
   `(progn
      ,@(loop for sexpr in (eval functions-with-args)
-	  collect (flet ((sym-in-pkg (sym &optional (package *package*) &aux (sym-name (symbol-name sym)))
+	  collect (flet ((sym-in-pkg (sym &optional (package cur-package) &aux (sym-name (symbol-name sym)))
 			   (find-symbol sym-name package)))
 		    (destructuring-bind (fn &rest args)
 			sexpr
 		      (let ((shadow-fn (sym-in-pkg fn))
-			    (shadowed-fn (sym-in-pkg fn package)))
-			`(defun-ext ,shadow-fn ,(mapcar #'(lambda (arg)
-							    (cond
-							      ((eq '&optional arg) '&optional)
-							      ((consp arg) (list (progn (intern (symbol-name (first arg)) *package*)
-											(sym-in-pkg (first arg)))
-										 (second arg)))
-							      ((symbolp arg) 
-							       (intern (symbol-name arg) *package*)
-							       (sym-in-pkg arg))))
-							args)
-			   (,shadowed-fn ,@(mapcan #'(lambda (arg)
-						       (cond
-							 ((eq '&optional arg) nil)
-							 ((consp arg) (list (sym-in-pkg (first arg))))
-							 ((symbolp arg) (list (sym-in-pkg arg)))))
-						   args)))))))))
+			    (shadowed-fn (sym-in-pkg fn package))
+			    (args-lambda-list (mapcar #'(lambda (arg)
+							  (cond
+							    ((member arg '(&optional &rest)) arg)
+							    ((consp arg) (list (progn (intern (symbol-name (first arg)) cur-package)
+										      (sym-in-pkg (first arg)))
+									       (sym-in-pkg (second arg))))
+							    ((symbolp arg) 
+							     (intern (symbol-name arg) cur-package)
+							     (sym-in-pkg arg))))
+						      args)))
+			(when (null shadow-fn) (call-bad-interface-error fn args-lambda-list cur-package package))
+			(when (macro-function shadowed-fn) (error "Can not recreate macro-function ~S" shadowed-fn))
+			`(defun-ext ,shadow-fn ,args-lambda-list
+			   (apply ',shadowed-fn ,@(loop 
+						     with result
+						     for arg in (butlast args)
+						     do (cond
+							  ((member arg '(&optional &rest))) ;do nothing
+							  ((consp arg) (push (sym-in-pkg (first arg))
+									     result))
+							  ((symbolp arg) (push (sym-in-pkg arg) result)))
+									       
+						     finally (let* ((last-arg (first (last args))))
+							       (push (if (null last-arg)
+									 nil
+									 (case arg
+									   (&rest (sym-in-pkg last-arg))
+									   (&optional (list 'list 
+											    (sym-in-pkg (if (consp last-arg)
+													    (first last-arg)
+													    last-arg))))
+									   (t (list 'list (sym-in-pkg last-arg)))))
+								       result)
+							       (return (reverse result))))))))))))
 
 ;(macroexpand-1 '(recreate-shadow-functions :daemon-sbcl-sys-linux-port (daemon-interfaces:get-unix-functions)))
 (defun define-unix-functions ()

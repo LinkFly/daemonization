@@ -6,9 +6,12 @@
 	   #:+ex-ok+ #:+ex-general+ #:+ex-software+ #:+ex-unavailable+ #:+ex-cantcreate+
 	   #:+pid-file-not-found+ #:+pid-file-exists+ #:+process-not-exists+
 	   #:+system-name+ #:get-system-path #:absolute-path-p #:ensure-absolute-path
-	   #:call-file-exists-error #:file-exists-error #:absolute-path-p
-	   #:call-passwd-struct-not-found-error #:call-group-struct-not-found-error
-	   #:call-group-change-but-user-not-change-error #:call-timeout-forked-process-response-error
+	   #:call-file-exists-error #:file-exists-error 
+	   #:call-passwd-struct-not-found-error #:passwd-struct-not-found-error
+	   #:call-group-struct-not-found-error #:group-struct-not-found-error
+	   #:call-group-change-but-user-not-change-error #:group-change-but-user-not-change-error
+	   #:call-timeout-forked-process-response-error #:timeout-forked-process-response-error
+	   #:call-bad-interface-error #:bad-interface-error
 	   #:pathname-as-directory 
 	   #:*timeout-daemon-response*
 
@@ -136,6 +139,17 @@ form."
 	     (format stream "Can't change the group, but not modify user. Group name: ~S"
 		     (group-name condition)))))
 
+(define-condition bad-interface-error (error)
+  ((fn-name :initarg :fn-name :accessor fn-name)
+   (args-lambda-list :initarg :args-lambda-list :accessor args-lambda-list)
+   (target-package :initarg :target-package :accessor target-package)
+   (source-package :initarg :source-package :accessor source-package))
+  (:report (lambda (condition stream)
+	     (with-slots (fn-name args-lambda-list target-package source-package) condition
+	       (format stream 
+		       "Bad interface. Function name: ~A. Lambda-list: ~A. Target package: ~A. Source package: ~A"
+		       fn-name args-lambda-list (package-name target-package) (package-name source-package))))))
+
 (defun call-file-exists-error (pathname)
   (error 'file-exists-error
 	 :pathname pathname))
@@ -148,12 +162,19 @@ form."
   (error 'group-struct-not-found-error
 	 :group-name group-name))
 
+(defun call-timeout-forked-process-response-error (timeout)
+  (error 'timeout-forked-process-response-error
+	 :timeout timeout))
+
 (defun call-group-change-but-user-not-change-error (group-name)
   (error 'group-change-but-user-not-change-error
 	 :group-name group-name))
 
-(defun call-timeout-forked-process-response-error (timeout)
-  (error 'timeout-forked-process-response-error
-	 :timeout timeout))
+(defun call-bad-interface-error (fn-name args-lambda-list target-package source-package)
+  (error 'bad-interface-error
+	 :fn-name fn-name
+	 :args-lambda-list args-lambda-list
+	 :target-package target-package
+	 :source-package source-package))
 
 
