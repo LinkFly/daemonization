@@ -154,7 +154,7 @@ form."
 (define-condition bad-start-pathname-error (error)
   ((source/load-pathname :initarg :source/load-pathname :accessor source/load-pathname))
   (:report (lambda (condition stream)
-	     (format stream "Bad source/load pathname. Character ~~ in the way. Pathname: ~A"
+	     (format stream "Bad source/load pathname. Character <Tilde> in the way. Pathname: ~A"
 		     (source/load-pathname condition)))))
 
 (defun call-bad-start-pathname-error (source/load-pathname)
