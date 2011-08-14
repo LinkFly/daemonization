@@ -120,24 +120,25 @@
      if (find #\~ dir) do (return nil)
      finally (return t)))
 
-(defun-ext daemonized (conf-params daemon-command &key (on-error :call-error) recreate-pid-file-on-start print-extra-status &aux on-error-variants)
-  (let ((pathname (get-system-path)))
-    (unless (check-normal-start-pathname pathname) (call-bad-start-pathname-error pathname)))
-  (when (consp conf-params) (setf conf-params (copy-list conf-params)))
-  (setq on-error-variants '(:return-error :as-ignore-errors :call-error :exit-from-lisp))
-  (assert (member on-error on-error-variants)
-	  () 
-	  "Bad keyword parameter on-error = ~S. Must be one of the ~S" on-error on-error-variants)
+(defun-ext daemonized (conf-params daemon-command &key (on-error :call-error) recreate-pid-file-on-start print-extra-status 
+		       &aux (on-error-variants '(:return-error :as-ignore-errors :call-error :exit-from-lisp)))
+  (when (consp conf-params) (setf conf-params (copy-list conf-params)))  
   (handler-case 
       (progn 
+	;; Checking normal parameters, command, and start/load pathname 
+	(let ((pathname (get-system-path)))
+	  (unless (check-normal-start-pathname pathname) (call-bad-start-pathname-error pathname)))
+	(assert (member on-error on-error-variants)
+		() 
+		"Bad keyword parameter on-error = ~S. Must be one of the ~S" on-error on-error-variants)
 	(check-daemon-command daemon-command)
 	(when (or (pathnamep conf-params) (stringp conf-params))
 	  (setf conf-params
 		(with-open-file (stream conf-params)
 		  (read stream))))
-
 	;;; Check and correct conf-params
 	(check-conf-params conf-params daemon-command)  
+
 	(let ((pid-file (getf conf-params :pid-file))
 	      (pid-file-dir (getf conf-params :pid-file-dir)))	  
 	  (when pid-file
