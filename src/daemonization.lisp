@@ -115,7 +115,14 @@
      ,@(loop for (cmd-clause . forms) in cases-bodies
 	  collect `((string-equal ,cmd ,cmd-clause) ,@forms))))		    
 
+(defun check-normal-start-pathname (pathname)
+  (loop for dir in (rest (pathname-directory pathname))
+     if (find #\~ dir) do (return nil)
+     finally (return t)))
+
 (defun-ext daemonized (conf-params daemon-command &key (on-error :call-error) recreate-pid-file-on-start print-extra-status &aux on-error-variants)
+  (let ((pathname (get-system-path)))
+    (unless (check-normal-start-pathname pathname) (call-bad-start-pathname-error pathname)))
   (when (consp conf-params) (setf conf-params (copy-list conf-params)))
   (setq on-error-variants '(:return-error :as-ignore-errors :call-error :exit-from-lisp))
   (assert (member on-error on-error-variants)

@@ -12,6 +12,7 @@
 	   #:call-group-change-but-user-not-change-error #:group-change-but-user-not-change-error
 	   #:call-timeout-forked-process-response-error #:timeout-forked-process-response-error
 	   #:call-bad-interface-error #:bad-interface-error
+	   #:call-bad-start-pathname-error #:bad-start-pathname-error
 	   #:pathname-as-directory 
 	   #:*timeout-daemon-response*
 
@@ -150,6 +151,16 @@ form."
 		       "Bad interface. Function name: ~A. Lambda-list: ~A. Target package: ~A. Source package: ~A"
 		       fn-name args-lambda-list (package-name target-package) (package-name source-package))))))
 
+(define-condition bad-start-pathname-error (error)
+  ((source/load-pathname :initarg :source/load-pathname :accessor source/load-pathname))
+  (:report (lambda (condition stream)
+	     (format stream "Bad source/load pathname. Character ~~ in the way. Pathname: ~A"
+		     (source/load-pathname condition)))))
+
+(defun call-bad-start-pathname-error (source/load-pathname)
+  (error 'bad-start-pathname-error
+	 :source/load-pathname source/load-pathname))
+
 (defun call-file-exists-error (pathname)
   (error 'file-exists-error
 	 :pathname pathname))
@@ -176,5 +187,6 @@ form."
 	 :args-lambda-list args-lambda-list
 	 :target-package target-package
 	 :source-package source-package))
+
 
 
