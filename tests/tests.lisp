@@ -98,103 +98,109 @@
 				 :direction :output :if-does-not-exist :create :if-exists :append)
     (apply #'format syslog-stream fmt-str args)))
 
+(defmacro with-error-handling (&body body)
+  `(handler-case ,@body
+     (error (err) (format t "~%ERROR: Bug in the tests code. Error: ~A~%~% ... Tests failed.~%" err))))
+ 
 (defun run-tests () 			 
-  (let* ((parent-pid (get-proc-id))
-	 (fn-child-proc-p (lambda () (/= parent-pid (get-proc-id))))
-	 (*test-mode* :user)
-	 (prompts-file-stream (open (get-log-file)
-				    :direction :output
-				    :if-does-not-exist :create
-				    :if-exists :supersede))
-	 (*standard-output* (make-broadcast-stream prompts-file-stream *standard-output*))
-	 (fn-wrapped-print-syslog (let ((test-mode-val *test-mode*))
-				    #'(lambda (fmt-str &rest args) 
-					(let ((*test-mode* test-mode-val))
-					  (apply #'print-syslog fmt-str args)))))
-	 (*fn-log-info* fn-wrapped-print-syslog)
-	 (*fn-log-err* fn-wrapped-print-syslog)
-	 (*fn-log-trace* fn-wrapped-print-syslog))
-    (ensure-no-syslog-file)
-    (princ "Tests daemonized ... ")
-    (terpri)
-    (unwind-protect 
-	 (block tests 
-	   (flet ((return-if-child () 
-		    (when (/= parent-pid (get-proc-id))
-		      (return-from tests t))))
+  (with-error-handling
+    (let* ((parent-pid (get-proc-id))
+	   (fn-child-proc-p (lambda () (/= parent-pid (get-proc-id))))
+	   (*test-mode* :user)
+	   (prompts-file-stream (open (get-log-file)
+				      :direction :output
+				      :if-does-not-exist :create
+				      :if-exists :supersede))
+	   (*standard-output* (make-broadcast-stream prompts-file-stream *standard-output*))
+	   (fn-wrapped-print-syslog (let ((test-mode-val *test-mode*))
+				      #'(lambda (fmt-str &rest args) 
+					  (let ((*test-mode* test-mode-val))
+					    (apply #'print-syslog fmt-str args)))))
+	   (*fn-log-info* fn-wrapped-print-syslog)
+	   (*fn-log-err* fn-wrapped-print-syslog)
+	   (*fn-log-trace* fn-wrapped-print-syslog))
+      (ensure-no-syslog-file)
+      (princ "Tests daemonized ... ")
+      (terpri)
+      (unwind-protect 
+	   (block tests 
+	     (flet ((return-if-child () 
+		      (when (/= parent-pid (get-proc-id))
+			(return-from tests t))))
 	
-	     (if (handler-case 
-		     (and 
-		      (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
-		      (progn (format t "~%try stop ...~%") (daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))
-		      (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
-		      (progn (format t "~%try kill ...~%") (daemon-cmd "kill") (not (eql daemon-share:+ex-ok+ (daemon-status))))
-		      (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
-		      (progn (format t "~%try restart ...~%") (daemon-cmd "restart") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
-		      (progn (format t "~%try stop ...~%")(daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))
-		      )
-		   (error (condition) (format t "~%ERROR: ~A~%" condition)))
-		 (format t "~% ... Tests passed.")
-		 (format t "~% ... Tests failed."))
-	     (terpri)
-	     (finish-output *standard-output*)
-	     (close *standard-output*) 
-	     (close prompts-file-stream)
-	     ))	;block tests
-    (unless (funcall fn-child-proc-p) (ensure-no-pid-file)))))
+	       (if (handler-case 
+		       (and 
+			(progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
+			(progn (format t "~%try stop ...~%") (daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))
+			(progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
+			(progn (format t "~%try kill ...~%") (daemon-cmd "kill") (not (eql daemon-share:+ex-ok+ (daemon-status))))
+			(progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
+			(progn (format t "~%try restart ...~%") (daemon-cmd "restart") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
+			(progn (format t "~%try stop ...~%")(daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))
+			)
+		     (error (condition) (format t "~%ERROR: ~A~%" condition)))
+		   (format t "~% ... Tests passed.")
+		   (format t "~% ... Tests failed."))
+	       (terpri)
+	       (finish-output *standard-output*)
+	       (close *standard-output*) 
+	       (close prompts-file-stream)
+	       ))			;block tests
+	(unless (funcall fn-child-proc-p) (ensure-no-pid-file))))))
 
 (defun root-run-tests (username)
-  (let* ((parent-pid (get-proc-id))
-	 (fn-child-proc-p (lambda () (/= parent-pid (get-proc-id))))
-	 (*test-mode* :root)
-	 (prompts-file-stream (open (get-log-file)
-				    :direction :output
-				    :if-does-not-exist :create
-				    :if-exists :supersede))
-	 (*standard-output* (make-broadcast-stream prompts-file-stream *standard-output*))
-	 (fn-wrapped-print-syslog (let ((test-mode-val *test-mode*))
-				    #'(lambda (fmt-str &rest args) 
-					(let ((*test-mode* test-mode-val))
-					  (apply #'print-syslog fmt-str args)))))
-	 (*fn-log-info* fn-wrapped-print-syslog)
-	 (*fn-log-err* fn-wrapped-print-syslog)
-	 (*fn-log-trace* fn-wrapped-print-syslog))
-    (ensure-no-syslog-file)
-    (recreate-root-syslog-file)    
-    (princ "Tests daemonized (with is changing of user) ... ")
-    (terpri)
-    (unwind-protect
-	 (block tests 
-	   (flet ((return-if-child () 
-		    (when (funcall fn-child-proc-p)
-		      (return-from tests t))))
+  (with-error-handling
+    (let* ((parent-pid (get-proc-id))
+	   (fn-child-proc-p (lambda () (/= parent-pid (get-proc-id))))
+	   (*test-mode* :root)
+	   (prompts-file-stream (open (get-log-file)
+				      :direction :output
+				      :if-does-not-exist :create
+				      :if-exists :supersede))
+	   (*standard-output* (make-broadcast-stream prompts-file-stream *standard-output*))
+	   (fn-wrapped-print-syslog (let ((test-mode-val *test-mode*))
+				      #'(lambda (fmt-str &rest args) 
+					  (let ((*test-mode* test-mode-val))
+					    (apply #'print-syslog fmt-str args)))))
+	   (*fn-log-info* fn-wrapped-print-syslog)
+	   (*fn-log-err* fn-wrapped-print-syslog)
+	   (*fn-log-trace* fn-wrapped-print-syslog))
+      (ensure-no-syslog-file)
+      (recreate-root-syslog-file)    
+      (princ "Tests daemonized (with is changing of user) ... ")
+      (terpri)
+      (unwind-protect
+	   (block tests 
+	     (flet ((return-if-child () 
+		      (when (funcall fn-child-proc-p)
+			(return-from tests t))))
 
-	     (if (and 	   
-		  (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
-		  (progn (format t "~%try stop ...~%") (daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))
-		  (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
-		  (progn (format t "~%try kill ...~%") (daemon-cmd "kill") (not (eql daemon-share:+ex-ok+ (daemon-status))))
-		  (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
-		  (progn (format t "~%try restart ...~%") (daemon-cmd "restart") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
-		  (progn (format t "~%try stop ...~%")(daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))
+	       (if (and 	   
+		    (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
+		    (progn (format t "~%try stop ...~%") (daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))
+		    (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
+		    (progn (format t "~%try kill ...~%") (daemon-cmd "kill") (not (eql daemon-share:+ex-ok+ (daemon-status))))
+		    (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
+		    (progn (format t "~%try restart ...~%") (daemon-cmd "restart") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
+		    (progn (format t "~%try stop ...~%")(daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))
 	      
-		  (let ((*root-daemon-conf* *root-daemon-conf*))
-		    (setf (getf *root-daemon-conf* :user) username)
-		    (format t "~%--- Try is changing of user ---~%")
-		    (and
-		     (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) 
-			    (equal (list daemon-share:+ex-ok+ username)
-				   (multiple-value-bind (status extra-status)
-				       (daemon-status)
-				     (list status (extra-status-user extra-status)))))
-		     (progn (format t "~%try stop ...~%") (daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))))
-		  )			;and
-		 (format t "~% ... Tests passed.")
-		 (format t "~% ... Tests failed."))
+		    (let ((*root-daemon-conf* *root-daemon-conf*))
+		      (setf (getf *root-daemon-conf* :user) username)
+		      (format t "~%--- Try is changing of user ---~%")
+		      (and
+		       (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) 
+			      (equal (list daemon-share:+ex-ok+ username)
+				     (multiple-value-bind (status extra-status)
+					 (daemon-status)
+				       (list status (extra-status-user extra-status)))))
+		       (progn (format t "~%try stop ...~%") (daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))))
+		    )			;and
+		   (format t "~% ... Tests passed.")
+		   (format t "~% ... Tests failed."))
 	  
-	     (terpri)	
-	     (finish-output *standard-output*)
-	     (close *standard-output*)
-	     (close prompts-file-stream)
-	     )) ;block tests
-      (unless (funcall fn-child-proc-p) (ensure-no-pid-file)))))
+	       (terpri)	
+	       (finish-output *standard-output*)
+	       (close *standard-output*)
+	       (close prompts-file-stream)
+	       ))			;block tests
+	(unless (funcall fn-child-proc-p) (ensure-no-pid-file))))))
