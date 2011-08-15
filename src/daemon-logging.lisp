@@ -139,7 +139,7 @@
 		    with begin-str = (format nil 
 					     "~S ~A"
 					     (first log-plist) 
-					     (if (member (second log-plist) '(:info :error))
+					     (if (eq :info (second log-plist)) 
 						 (progn (setq log-plist (rest (rest log-plist)))
 							(concatenate 'string 
 								     (format nil "~6A ~A \"" "" indent)

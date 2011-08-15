@@ -123,15 +123,17 @@
 		    (when (/= parent-pid (get-proc-id))
 		      (return-from tests t))))
 	
-	     (if (and 
-		  (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
-		  (progn (format t "~%try stop ...~%") (daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))
-		  (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
-		  (progn (format t "~%try kill ...~%") (daemon-cmd "kill") (not (eql daemon-share:+ex-ok+ (daemon-status))))
-		  (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
-		  (progn (format t "~%try restart ...~%") (daemon-cmd "restart") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
-		  (progn (format t "~%try stop ...~%")(daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))
-		  )
+	     (if (handler-case 
+		     (and 
+		      (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
+		      (progn (format t "~%try stop ...~%") (daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))
+		      (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
+		      (progn (format t "~%try kill ...~%") (daemon-cmd "kill") (not (eql daemon-share:+ex-ok+ (daemon-status))))
+		      (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
+		      (progn (format t "~%try restart ...~%") (daemon-cmd "restart") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
+		      (progn (format t "~%try stop ...~%")(daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))
+		      )
+		   (error (condition) (format t "~%ERROR: ~A~%" condition)))
 		 (format t "~% ... Tests passed.")
 		 (format t "~% ... Tests failed."))
 	     (terpri)

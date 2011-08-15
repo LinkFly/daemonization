@@ -6,9 +6,14 @@
 		 :directory (butlast (pathname-directory *load-pathname*)))
       asdf:*central-registry*)
 
-(with-output-to-string (*trace-output*)
-  (with-output-to-string (*standard-output*)
-    (asdf:load-system :daemonization-test)))
+(eval-when (:execute) 
+  (handler-case
+      (with-output-to-string (*trace-output*)
+	(with-output-to-string (*standard-output*)
+	  (asdf:load-system :daemonization-test)))
+    (error (c) 
+      (format t "ERROR: Load system :daemonization-test failed. ~A~%" c)
+      (quit))))
 
 (defun run-tests (&aux parent-pid)
   (setf parent-pid (daemonization-test:get-proc-id))

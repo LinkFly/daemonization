@@ -123,10 +123,11 @@
 (defun-ext daemonized (conf-params daemon-command &key (on-error :call-error) recreate-pid-file-on-start print-extra-status 
 		       &aux (on-error-variants '(:return-error :as-ignore-errors :call-error :exit-from-lisp)))
   (let ((pathname (get-system-path)))
-    (unless (check-normal-start-pathname pathname) (call-bad-start-pathname-error pathname)))
-  (when (consp conf-params) (setf conf-params (copy-list conf-params)))  
+    (unless (check-normal-start-pathname pathname) (call-bad-start-pathname-error pathname)))  
   (handler-case 
       (progn 
+	(when (consp conf-params) (setf conf-params (copy-list conf-params)))  
+
 	;; Checking normal parameters, command, and start/load pathname 	
 	(assert (member on-error on-error-variants)
 		() 
@@ -186,7 +187,10 @@
 	      (values status extra-status)))))
     (error (err)
       (when (eq :child *process-type*) (error err))
-      (log-err (format nil "~A" err))
+      (let ((err-str (format nil "~A" err)))
+	(when (find #\~ err-str) 
+	  (error "Bad error message - it is contain the tildes. Error message: \"~A\"." err-str))
+	(log-err err-str))
       (format t "ERROR: ~A~%" err)
       (case on-error
 	(:exit-from-lisp (exit +ex-general+))

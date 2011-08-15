@@ -25,7 +25,7 @@
   (defparameter *fn-log-info-load* nil)
   (defparameter *fn-log-err* #'(lambda (fmt-str &rest args)
 				 (add-daemon-log (concatenate 'string "ERROR: " (apply #'format nil fmt-str args)))
-				 (apply 'syslog-err (concatenate 'string "ERROR: " fmt-str) args)))
+				 (syslog-err (add-daemon-log (concatenate 'string "ERROR: " fmt-str)))))
   (defparameter *fn-log-trace* #'(lambda (fmt-str)
 				   (syslog-info "~A" (add-daemon-log fmt-str))))
   (defparameter *fn-log-pid* #'(lambda () (let ((*print-call* nil)) (getpid)))))
