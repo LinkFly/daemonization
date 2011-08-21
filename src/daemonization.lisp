@@ -8,7 +8,14 @@
 	   #:EXTRA-STATUS-NAME #:EXTRA-STATUS-PID-FILE #:EXTRA-STATUS-USER
 
 	   ;; for finding pid-files
-	   #:*pid-files-dirname* #:get-pid-files-dir))
+	   #:*pid-files-dirname* #:get-pid-files-dir
+
+	   ;; for finding conf-files 
+	   #:*conf-files-dirname* #:get-conf-files-dir #:*default-conf-file-name* #:get-default-conf-file
+
+	   ;;for analizing conf-params
+	   #:probe-conf-params
+	   #:equal-conf-params))
 
 (in-package :daemonization)
 
@@ -22,8 +29,9 @@
 ;(defun f (x &key y) (+ x y))
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-constant +all-daemon-commands+ '("start" "stop" "zap" "kill" "restart" "nodaemon" "status"))
-(define-constant +conf-parameters+ '(:before-init-fn :main-function :name :user :group :pid-file :pid-file-dir :before-parent-exit-fn :exit :os-params))
+(define-constant +all-daemon-commands+ '("start" "stop" "zap" "kill" "restart" "nodaemon" "status")) 
+(define-constant +conf-parameters+ '(:before-init-fn :main-function :name :user :group :pid-file :pid-file-dir
+				     :before-parent-exit-fn :exit :os-params :parent-conf-file :parent-conf-file-dir))
 (define-constant 
     +bad-conf-str-err+
     (format nil 
@@ -42,7 +50,7 @@
   (log-info " ... OK.")
   cmd)
 
-(defun-ext check-conf-params (conf-params cmd)
+(defun-ext check-conf-params (conf-params &optional cmd)
 ;(setq conf-params '(:name "mydaemon" :user "lispuser" :pid-file "/home/lispuser/tmp/pid"))
   (log-info "Check conf-params ...")
   (unless (and (zerop (mod (length conf-params) 2))
@@ -53,10 +61,103 @@
 		  do (return)
 		  collect key into keys
 		  finally (return t)))
-      (log-err (format nil "~A (daemon command: ~A)" +bad-conf-str-err+ cmd))
-      (error (format nil "~A (daemon command: ~A)" +bad-conf-str-err+ cmd)))
+    (let ((err-str (format nil
+			   "~A~A"
+			   +bad-conf-str-err+
+			   (if (null cmd)
+			       ""
+			       (format nil " (daemon command: ~A)" cmd)))))
+      (log-err err-str)
+      (error err-str)))
   (log-info " ... OK.")
   conf-params)
+
+(defun-ext get-real-file (file &optional dir-or-fn-get-dir)
+  (declare (type (or pathname string function null) file dir-or-fn-get-dir))
+  (when (null file) (return-from get-real-file))
+  (if (absolute-path-p file)
+      file
+      (let ((pathname (typecase dir-or-fn-get-dir
+				 ((or pathname string) dir-or-fn-get-dir)
+				 (function (funcall dir-or-fn-get-dir))
+				 (null (get-system-path)))))
+	(make-pathname :defaults pathname :name file))))
+		       
+
+(defun-ext read-conf-params (file)
+  (with-open-file (stream file)
+    (read stream)))
+
+(defun-ext merge-conf-params (base-params params)
+  (loop 
+     with result-params = (copy-tree base-params)
+     for pair on params by #'cddr
+     do (setf (getf result-params (first pair)) 
+	      (second pair))
+     finally (return result-params)))
+
+(defun-ext sort-conf-params (conf-params) ;
+  (setf conf-params (copy-tree conf-params))
+  (loop 
+     with pairs = (sort (loop for key-val-rest on conf-params by #'cddr
+			   for (key val) = key-val-rest
+			   collect (list key val))
+			#'string<
+			:key (lambda (pair) (symbol-name (first pair))))
+     for pair in pairs
+     append pair)) ;sort-conf-params
+
+(defun-ext equal-conf-params (conf-params1 conf-params2)
+  (equalp (sort-conf-params conf-params1) (sort-conf-params conf-params2)))
+
+(defun-ext normalize-conf-params (params-or-file)
+  (declare (type (or pathname string list) params-or-file))
+  (typecase params-or-file
+    (list (return-from normalize-conf-params params-or-file))
+    ((or pathname string) 
+     (with-open-file (stream (get-real-file params-or-file (get-conf-files-dir)))
+       (read stream)))))
+
+(defun-ext correct-and-check-conf-params (conf-params fn-check)
+  (funcall fn-check conf-params)
+  (loop 
+     with result
+     with conf-files-dir = (get-conf-files-dir)
+     for cur-conf-params = (funcall fn-check (normalize-conf-params conf-params))
+       then (funcall fn-check (read-conf-params file))
+     for file = (get-real-file (getf cur-conf-params :parent-conf-file)
+			       (or (getf cur-conf-params :parent-conf-file-dir)
+				   conf-files-dir))
+     while file
+     do (log-info "~%Found parent file: ~A" file)
+     if (member file parent-files :test #'equal)
+      do (error "Cyclic dependency in the config files")
+     else collect file into parent-files 
+     do (push cur-conf-params result)
+     finally (return
+	       (sort-conf-params
+		(progn 
+		  (push cur-conf-params result)
+		  (do ((cur-params (funcall fn-check 
+					    (read-conf-params (get-default-conf-file)))
+				   (merge-conf-params cur-params (pop result))))
+		      ((null result) cur-params)))))))
+
+(defun-ext probe-conf-params (conf-params) 
+  (let ((*fn-log-info* nil)
+	(*fn-log-err* nil)
+	(*print-call* nil))
+    (correct-and-check-conf-params conf-params #'check-conf-params)))
+
+(defun-ext check-and-correct-pid-file-param (conf-params daemon-command)
+  (let ((pid-file (getf conf-params :pid-file))
+	(pid-file-dir (getf conf-params :pid-file-dir)))	  
+    (when pid-file
+      (unless (absolute-path-p pid-file)
+	(unless pid-file-dir (setf pid-file-dir (get-pid-files-dir)))
+	(setf (getf conf-params :pid-file) 
+	      (setf pid-file (make-pathname :defaults (pathname-as-directory pid-file-dir)
+					    :name pid-file)))))))
 
 (defun-ext check-not-exists-pid-file (pid-file cmd)
   (let ((err-str "pid-file ~S is already exists (daemon command: ~A)"))
@@ -133,27 +234,24 @@
 		() 
 		"Bad keyword parameter on-error = ~S. Must be one of the ~S" on-error on-error-variants)
 	(check-daemon-command daemon-command)
-	(when (or (pathnamep conf-params) (stringp conf-params))
-	  (setf conf-params
-		(with-open-file (stream conf-params)
-		  (read stream))))
-	;;; Check and correct conf-params
-	(check-conf-params conf-params daemon-command)  
 
-	(let ((pid-file (getf conf-params :pid-file))
-	      (pid-file-dir (getf conf-params :pid-file-dir)))	  
-	  (when pid-file
-	    (unless (absolute-path-p pid-file)
-	      (unless pid-file-dir (setf pid-file-dir (get-pid-files-dir)))
-	      (setf (getf conf-params :pid-file) 
-		    (setf pid-file (make-pathname :defaults (pathname-as-directory pid-file-dir)
-						  :name pid-file))))
-	    (when (string-equal "start" daemon-command)
-	      (if recreate-pid-file-on-start
-		  (when (probe-file pid-file) (delete-file pid-file))
-		  (check-not-exists-pid-file pid-file daemon-command))))) 
+	;;; Set the conf-params given parent files, check and correct conf-params
+	(setq conf-params (correct-and-check-conf-params conf-params 
+							 (lambda (conf-params) 
+							   (check-conf-params conf-params
+									      daemon-command))))
+	
+	(check-and-correct-pid-file-param conf-params daemon-command)
 
 	(log-info "conf-params is: ~S" conf-params)
+
+	;;; Recreate or check is exists pid-file
+	(let ((pid-file (getf conf-params :pid-file)))
+	  (when (string-equal "start" daemon-command)
+	    (if recreate-pid-file-on-start
+		(when (probe-file pid-file) (delete-file pid-file))
+		(check-not-exists-pid-file pid-file daemon-command))))
+	
 	(let* ((*process-type* :parent)
 	       (result (block into-daemonized
 			 (let ((*fn-exit* #'(lambda (&optional (status +ex-ok+) extra-status) 

@@ -41,10 +41,10 @@
   (make-pathname :defaults (get-system-path)
 		 :directory (append (pathname-directory (get-system-path)) (list +test-dir+))))
 
-(defun get-full-pathname (log-file-name)
+(defun get-full-pathname (file-name)
   (make-pathname :defaults (get-test-dir)
 		 :type nil
-		 :name log-file-name))
+		 :name file-name))
 
 (defun get-log-file ()
   (case *test-mode*
@@ -98,6 +98,20 @@
 				 :direction :output :if-does-not-exist :create :if-exists :append)
     (apply #'format syslog-stream fmt-str args)))
 
+(defun read-conf-params (file)
+  (with-open-file (stream file)
+    (read stream)))
+
+(defun test-config-handling ()
+  (let ((base-conf "base-conf-params.conf")
+	(result-conf "result-conf-params.conf")
+	(*conf-files-dirname* "tests")
+	(*default-conf-file-name* (make-pathname :defaults (get-conf-files-dir) :name *default-conf-file-name*)))
+    (equal-conf-params 
+     (probe-conf-params (read-conf-params (get-full-pathname base-conf)))
+     (read-conf-params (get-full-pathname result-conf)))))
+;(test-config-handling)
+
 (defmacro with-error-handling (&body body)
   `(handler-case ,@body
      (error (err) (format t "~%ERROR: Bug in the tests code. Error: ~A~%~% ... Tests failed.~%" err))))
@@ -127,9 +141,12 @@
 	     (flet ((return-if-child () 
 		      (when (/= parent-pid (get-proc-id))
 			(return-from tests t))))
-	
+	       
 	       (if (handler-case 
 		       (and 
+			(progn (format t "~%try testing handling of the configuration ... ") (if (test-config-handling) 
+												 (progn (format t "OK~%") t)
+												 (format t "FAIL~%")))
 			(progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
 			(progn (format t "~%try stop ...~%") (daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))
 			(progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
@@ -175,7 +192,10 @@
 		      (when (funcall fn-child-proc-p)
 			(return-from tests t))))
 
-	       (if (and 	   
+	       (if (and 
+		    (progn (format t "~%try testing handling of the configuration ... ") (if (test-config-handling) 
+											     (progn (format t "OK~%") t)
+											     (format t "FAIL~%")))		    
 		    (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
 		    (progn (format t "~%try stop ...~%") (daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))
 		    (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))

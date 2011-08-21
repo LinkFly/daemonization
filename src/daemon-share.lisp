@@ -35,7 +35,10 @@
 	   #:*fn-log-info-load*
 
 	   ;; for finding pid-files 
-	   #:*pid-files-dirname* #:get-pid-files-dir))
+	   #:*pid-files-dirname* #:get-pid-files-dir 
+
+	   ;; for finding conf-files 
+	   #:*conf-files-dirname* #:get-conf-files-dir #:*default-conf-file-name* #:get-default-conf-file))
 
 (in-package :daemon-share)
 
@@ -47,6 +50,8 @@
 
 (defparameter *fn-log-info-load* *fn-log-info* "Function for logging at load time")
 (defparameter *pid-files-dirname* "pid-files" "Default directory for saving pid-files")
+(defparameter *conf-files-dirname* "conf-files" "Default directory for config files")
+(defparameter *default-conf-file-name* "default.conf" "From this file do reading all are not setting parameters")
 (defparameter *timeout-daemon-response* 5 "Second for waiting init daemon(child process 
 after fork). If daemon not response - calling timeout-forked-process-response-error")
 
@@ -108,8 +113,22 @@ form."
           (t pathname))))
 
 (defun get-pid-files-dir ()
+  (when (absolute-path-p *pid-files-dirname*) 
+    (return-from get-pid-files-dir (pathname-as-directory *pid-files-dirname*)))
   (make-pathname :defaults (get-system-path)
 		 :directory (append (pathname-directory (get-system-path)) (list *pid-files-dirname*))))
+
+(defun get-conf-files-dir ()
+  (when (absolute-path-p *conf-files-dirname*) 
+    (return-from get-conf-files-dir (pathname-as-directory *conf-files-dirname*)))
+  (make-pathname :defaults (get-system-path)
+		 :directory (append (pathname-directory (get-system-path)) (list *conf-files-dirname*))))
+
+(defun get-default-conf-file ()
+  (when (absolute-path-p *default-conf-file-name*) 
+    (return-from get-default-conf-file *default-conf-file-name*))
+  (make-pathname :defaults (get-conf-files-dir)
+		 :name *default-conf-file-name*))
 
 (define-condition file-exists-error (error) 
   ((pathname :initarg :pathname :accessor file-exists-error-pathname))
