@@ -19,16 +19,16 @@
 (in-package :daemon-core-port)
 
 (defun logging-init ()
-  (defparameter *fn-log-info* #'(lambda (fmt-str &rest args)
-				  (add-daemon-log (apply #'format nil fmt-str args))
-				  (apply 'syslog-info fmt-str args)))
-  (defparameter *fn-log-info-load* nil)
-  (defparameter *fn-log-err* #'(lambda (fmt-str &rest args)
-				 (add-daemon-log (concatenate 'string "ERROR: " (apply #'format nil fmt-str args)))
-				 (syslog-err (add-daemon-log (concatenate 'string "ERROR: " fmt-str)))))
-  (defparameter *fn-log-trace* #'(lambda (fmt-str)
-				   (syslog-info "~A" (add-daemon-log fmt-str))))
-  (defparameter *fn-log-pid* #'(lambda () (let ((*print-call* nil)) (getpid)))))
+  (setf *fn-log-info* #'(lambda (fmt-str &rest args)
+			  (add-daemon-log (apply #'format nil fmt-str args))
+			  (apply 'syslog-info fmt-str args))
+	*fn-log-info-load* nil
+	*fn-log-err* #'(lambda (fmt-str &rest args)
+			 (add-daemon-log (concatenate 'string "ERROR: " (apply #'format nil fmt-str args)))
+			 (syslog-err (add-daemon-log (concatenate 'string "ERROR: " fmt-str))))
+	*fn-log-trace* #'(lambda (fmt-str)
+			   (syslog-info "~A" (add-daemon-log fmt-str)))
+	*fn-log-pid* #'(lambda () (let ((*print-call* nil)) (getpid)))))
 
 #+daemon.as-daemon
 (progn 
