@@ -144,7 +144,7 @@
 	       
 	       (if (handler-case 
 		       (and 
-			(progn (format t "~%try testing handling of the configuration ... ") (if (test-config-handling) 
+			(progn (format t "~%try test handling of the configuration ... ") (if (test-config-handling) 
 												 (progn (format t "OK~%") t)
 												 (format t "FAIL~%")))
 			(progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
@@ -193,7 +193,7 @@
 			(return-from tests t))))
 
 	       (if (and 
-		    (progn (format t "~%try testing handling of the configuration ... ") (if (test-config-handling) 
+		    (progn (format t "~%try test handling of the configuration ... ") (if (test-config-handling) 
 											     (progn (format t "OK~%") t)
 											     (format t "FAIL~%")))		    
 		    (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))

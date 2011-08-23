@@ -4,8 +4,15 @@
   (:export #:daemonized #:get-daemon-log-list #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace*
 	   #:+all-daemon-commands+ #:+conf-parameters+
 	   ;; for reading extra-status
-	   #:EXTRA-STATUS-EXIT-CODE #:EXTRA-STATUS-PID 
-	   #:EXTRA-STATUS-NAME #:EXTRA-STATUS-PID-FILE #:EXTRA-STATUS-USER
+	   #:extra-status
+	   #:make-extra-status
+	   #:extra-status-p
+	   #:copy-extra-status
+	   #:extra-status-pid
+	   #:extra-status-exit-code
+	   #:extra-status-name
+	   #:extra-status-pid-file
+	   #:extra-status-user
 
 	   ;; for finding pid-files
 	   #:*pid-files-dirname* #:get-pid-files-dir
@@ -70,19 +77,7 @@
       (log-err err-str)
       (error err-str)))
   (log-info " ... OK.")
-  conf-params)
-
-(defun-ext get-real-file (file &optional dir-or-fn-get-dir)
-  (declare (type (or pathname string function null) file dir-or-fn-get-dir))
-  (when (null file) (return-from get-real-file))
-  (if (absolute-path-p file)
-      file
-      (let ((pathname (typecase dir-or-fn-get-dir
-				 ((or pathname string) dir-or-fn-get-dir)
-				 (function (funcall dir-or-fn-get-dir))
-				 (null (get-system-path)))))
-	(make-pathname :defaults pathname :name file))))
-		       
+  conf-params)		       
 
 (defun-ext read-conf-params (file)
   (with-open-file (stream file)
@@ -119,7 +114,6 @@
        (read stream)))))
 
 (defun-ext correct-and-check-conf-params (conf-params fn-check)
-  (funcall fn-check conf-params)
   (loop 
      with result
      with conf-files-dir = (get-conf-files-dir)

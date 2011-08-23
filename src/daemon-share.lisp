@@ -1,6 +1,7 @@
 (defpackage daemon-share 
   (:use :cl :daemon-features :daemon-logging)
   (:export #:define-constant 
+	   #:get-real-file
 	   #:*process-type* ;;Must be nil or :parent or :child. Needed for daemonize (there reading) and fork (there set)")
 	   #:*fn-exit*
 	   #:+ex-ok+ #:+ex-general+ #:+ex-software+ #:+ex-unavailable+ #:+ex-cantcreate+
@@ -14,14 +15,12 @@
 	   #:call-bad-interface-error #:bad-interface-error
 	   #:call-bad-start-pathname-error #:bad-start-pathname-error
 	   #:pathname-as-directory 
-	   #:*timeout-daemon-response*
-
-	   ;;; Struct functions
-	   #:MAKE-EXTRA-STATUS #:EXTRA-STATUS-EXIT-CODE #:EXTRA-STATUS-PID 
-	   #:EXTRA-STATUS-NAME #:EXTRA-STATUS-PID-FILE #:EXTRA-STATUS-USER
-	   #:NAME #:PID-FILE
+	   #:*timeout-daemon-response*	   
+	   
+	   #:plist-to-logger
 
 	   ;;; Logging
+	   #:*logger*
 	   #:log-info #:log-err #:defun-ext #:wrap-log
 	   #:*print-log-info* #:*print-log-err*
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
@@ -38,7 +37,35 @@
 	   #:*pid-files-dirname* #:get-pid-files-dir 
 
 	   ;; for finding conf-files 
-	   #:*conf-files-dirname* #:get-conf-files-dir #:*default-conf-file-name* #:get-default-conf-file))
+	   #:*conf-files-dirname* #:get-conf-files-dir #:*default-conf-file-name* #:get-default-conf-file 
+	   #:*conf-log-file* #:get-logging-conf-file
+
+	   ;; for setting log files	   
+	   #:*log-file-dir* #:get-log-file-dir	   
+
+	   ;;; Struct functions
+	   #:extra-status
+	   #:make-extra-status
+	   #:extra-status-p
+	   #:copy-extra-status
+	   #:extra-status-pid
+	   #:extra-status-exit-code
+	   #:extra-status-name
+	   #:extra-status-pid-file
+	   #:extra-status-user
+
+	   #:logger
+	   #:make-logger
+	   #:logger-p
+	   #:copy-logger
+	   #:logger-files-dir
+	   #:logger-admin-files-dir
+	   #:logger-info-destination
+	   #:logger-error-destination
+	   #:logger-trace-destination
+	   #:logger-admin-info-destination
+	   #:logger-admin-error-destination
+	   #:logger-admin-trace-destination))
 
 (in-package :daemon-share)
 
@@ -52,10 +79,24 @@
 (defparameter *pid-files-dirname* "pid-files" "Default directory for saving pid-files")
 (defparameter *conf-files-dirname* "conf-files" "Default directory for config files")
 (defparameter *default-conf-file-name* "default.conf" "From this file do reading all are not setting parameters")
+(defparameter *conf-log-file* "default-logging.conf" "Parameters for logging")
+
+(defstruct logger
+  (files-dir "logs" :type string)
+  (admin-files-dir "logs" :type string)
+  (info-destination :system :type (or string pathname (eql :system)))
+  (error-destination :system :type (or string pathname (eql :system)))
+  (trace-destination :system :type (or string pathname (eql :system)))
+  (admin-info-destination :system :type (or string pathname (eql :system)))
+  (admin-error-destination :system :type (or string pathname (eql :system)))
+  (admin-trace-destination :system :type (or string pathname (eql :system))))
+(declaim (type (or null logger) *logger*))
+(defparameter *logger* nil "Contains logger object with the parameters readed from *conf-log-file*")
+
 (defparameter *timeout-daemon-response* 5 "Second for waiting init daemon(child process 
 after fork). If daemon not response - calling timeout-forked-process-response-error")
 
-(defstruct extra-status 
+(defstruct extra-status
   pid exit-code name pid-file user)
 (defparameter *fn-exit* nil "Function for none local exit. Must be have parameters (&optional (status +ex-ok+) extra-status).
 Return value must be status value or list contained status value and value type of extra-status.")
@@ -70,6 +111,20 @@ Return value must be status value or list contained status value and value type 
 (defconstant +pid-file-exists+ 257)
 (defconstant +process-not-exists+ 258)
  
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun plist-to-logger (plist)
+  (loop with logger = (make-logger)
+     for cur-plist on plist by #'cddr
+     for key = (first cur-plist)
+     for slot = (find-symbol (symbol-name key) (symbol-package 'logger))
+     if (slot-exists-p logger slot)
+      do (setf (slot-value logger slot) (second cur-plist))
+     else do (error "Slot ~S not exist. Bad plist - not appropriate of the logger struct." slot)
+     finally (return logger)))
+
+;;;;;;;;;;;;;;;;;;;;;; end utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Pathnames ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun get-system-path ()
   (asdf:component-pathname 
    (asdf:find-system +system-name+)))
@@ -112,6 +167,17 @@ form."
                           :defaults pathname))
           (t pathname))))
 
+(defun get-real-file (file &optional dir-or-fn-get-dir)
+  (declare (type (or pathname string function null) file dir-or-fn-get-dir))
+  (when (null file) (return-from get-real-file))
+  (if (absolute-path-p file)
+      file
+      (let ((pathname (typecase dir-or-fn-get-dir
+				 ((or pathname string) dir-or-fn-get-dir)
+				 (function (funcall dir-or-fn-get-dir))
+				 (null (get-system-path)))))
+	(make-pathname :defaults pathname :name file))))
+
 (defun get-pid-files-dir ()
   (when (absolute-path-p *pid-files-dirname*) 
     (return-from get-pid-files-dir (pathname-as-directory *pid-files-dirname*)))
@@ -130,6 +196,15 @@ form."
   (make-pathname :defaults (get-conf-files-dir)
 		 :name *default-conf-file-name*))
 
+(defun get-logging-conf-file ()
+  (when (absolute-path-p *conf-log-file*) 
+    (return-from get-logging-conf-file *conf-log-file*))
+  (make-pathname :defaults (get-conf-files-dir)
+		 :name *conf-log-file*))
+
+;;;;;;;;;;;;;;;;;;;;;;;; end pathnames ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;; Conditions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define-condition file-exists-error (error) 
   ((pathname :initarg :pathname :accessor file-exists-error-pathname))
   (:report (lambda (condition stream)
@@ -206,6 +281,6 @@ form."
 	 :args-lambda-list args-lambda-list
 	 :target-package target-package
 	 :source-package source-package))
-
+;;;;;;;;;;;;;; end conditions ;;;;;;;;;;;;;;;;;;
 
 

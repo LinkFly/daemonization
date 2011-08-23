@@ -18,16 +18,54 @@
 
 (in-package :daemon-core-port)
 
+(defun gen-fn-log (type fn-system-log)
+  (declare (type (or (eql :info) (eql :error) (eql :trace)) type)
+	   (type function fn-system-log))
+  (lambda (fmt-str &rest args &aux
+	   file-stream-system
+	   (is-admin (let ((*print-call* nil)) (admin-current-user-p)))
+	   (logger *logger*))
+    (flet ((get-file-stream-system (getters-plist)
+	     (funcall (funcall (if is-admin #'first #'second)
+			       (getf getters-plist type))
+		      logger))
+	   (get-file-dir (admin-logs-dir-getter logs-dir-getter) 
+	     (pathname-as-directory 
+	      (get-real-file (funcall (if is-admin admin-logs-dir-getter logs-dir-getter)
+				      logger)))))
+			     
+      (setf file-stream-system (get-file-stream-system
+				'(:info (logger-admin-info-destination logger-info-destination)
+				  :error (logger-admin-error-destination logger-error-destination)
+				  :trace (logger-admin-trace-destination logger-trace-destination))))
+
+      (when (typep file-stream-system '(or string pathname))
+	(setf file-stream-system (get-real-file file-stream-system
+						(get-file-dir 'logger-admin-files-dir 'logger-files-dir))))
+      
+      (typecase file-stream-system
+	((eql :system) (apply fn-system-log fmt-str args))
+	(stream (apply #'format file-stream-system fmt-str args))
+	((or pathname string) 
+	 (with-open-file (stream file-stream-system
+				 :direction :output
+				 :if-exists :append
+				 :if-does-not-exist :create)
+	   (apply #'format stream fmt-str args)
+	   (force-output))))))) 
+
 (defun logging-init ()
-  (setf *fn-log-info* #'(lambda (fmt-str &rest args)
+  (setf *logger* (plist-to-logger (with-open-file (stream (get-logging-conf-file))
+				    (read stream)))
+	*fn-log-info* #'(lambda (fmt-str &rest args)
 			  (add-daemon-log (apply #'format nil fmt-str args))
-			  (apply 'syslog-info fmt-str args))
+			  (apply (gen-fn-log :info #'syslog-info) fmt-str args))
 	*fn-log-info-load* nil
 	*fn-log-err* #'(lambda (fmt-str &rest args)
 			 (add-daemon-log (concatenate 'string "ERROR: " (apply #'format nil fmt-str args)))
-			 (syslog-err (add-daemon-log (concatenate 'string "ERROR: " fmt-str))))
+			 (apply (gen-fn-log :error #'syslog-err) (concatenate 'string "ERROR: " fmt-str) args))
 	*fn-log-trace* #'(lambda (fmt-str)
-			   (syslog-info "~A" (add-daemon-log fmt-str)))
+			   (apply (gen-fn-log :trace #'syslog-info) "~A" (add-daemon-log fmt-str) nil))
 	*fn-log-pid* #'(lambda () (let ((*print-call* nil)) (getpid)))))
 
 #+daemon.as-daemon

@@ -9,7 +9,8 @@
 	   #:exit
 	   #:get-args
 	   #:getpid
-	   #:recreate-file-allow-write-other))	   
+	   #:recreate-file-allow-write-other
+	   #:admin-current-user-p))	   
 
 (in-package :daemon-utils-port)
 
@@ -28,6 +29,9 @@
   (progn 
     #+daemon.listen-privileged-ports
     (set-grant-listen-privileged-ports)))
+
+(defun-ext admin-current-user-p ()
+  (admin-user-p (get-username)))
 
 (defun-ext is-admin-user-and-change-user-p (new-user new-group)
   (when (and (null new-user) (null new-group))

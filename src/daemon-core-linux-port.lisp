@@ -126,7 +126,8 @@
      :fn-exit #'(lambda (&optional (status +ex-ok+) extra-status)
 		  (funcall #'cur-exit
 			   status 
-			   (with-slots ((es-name name) (es-pid-file pid-file)) extra-status
+			   (let ((es-name (extra-status-name extra-status)) 
+				 (es-pid-file (extra-status-pid-file extra-status)))
 			     (unless (and (null es-name) (null es-pid-file))
 			       (let ((err
 "Slots name or/and pid-file of extra-status instance not must be fulled in this point"))
