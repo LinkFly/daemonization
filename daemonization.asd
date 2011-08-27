@@ -8,7 +8,8 @@
 
 (defsystem :daemonization
   :version "0.0.1"
-  :depends-on (#+sbcl :sb-posix
+  :depends-on (:sb-introspect ;:sb-debug
+	       #+sbcl :sb-posix
 	       #-sbcl #.(error "Not implemented for non sbcl lisp systems"))
   :components ((:module "src"
 			:components ((:file "daemon-features")

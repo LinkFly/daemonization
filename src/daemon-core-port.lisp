@@ -14,7 +14,9 @@
 
 	   #:logging-init
 	   #:import-sys-functions-and-constants
-	   #:define-unix-functions))
+	   #:define-unix-functions
+
+	   #:get-error-description))
 
 (in-package :daemon-core-port)
 

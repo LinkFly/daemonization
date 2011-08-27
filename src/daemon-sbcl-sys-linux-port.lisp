@@ -39,7 +39,9 @@
 	   #:stat #:stat-uid #:passwd-name #:getpwuid
 	   #:import-sys-functions-and-constants
 
-	   #:log-info-constant #:log-err-constant)) 
+	   #:log-info-constant #:log-err-constant
+	   
+	   #:get-error-description)) 
 
 (in-package :daemon-sbcl-sys-linux-port)
 
@@ -133,4 +135,29 @@
   (def-alien-call "ptsname" c-string null (fd sb-posix::file-descriptor))      	 
   ) ;progn for :daemon.as-daemon feature
 )) ;let, defun import-sys-functions-and-constants
+
+
+;;;;;;;;;;;;;;;;;;;;;;; For debugging ;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defparameter *frames-before-error-call* 5)
+
+(defmacro get-function-source (backtrace)
+			      `(sb-introspect:find-definition-source
+				(symbol-function
+				 (first (first (nthcdr *frames-before-error-call*
+						       ,backtrace))))))
+
+(defmacro get-error-description (err)
+  `(let ((backtrace-list (sb-debug:backtrace-as-list *backtrace-count*))
+	 (error-description (make-error-description)))
+     (with-accessors ((condition error-description-condition)
+		      (backtrace error-description-backtrace)
+		      (source error-description-source))
+	 error-description
+       (setf condition ,err
+	     backtrace backtrace-list
+	     source (get-function-source backtrace)))
+     error-description))
+
+
+    
 

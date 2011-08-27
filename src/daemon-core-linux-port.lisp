@@ -2,7 +2,9 @@
   (:use :cl :daemon-share :daemon-unix-api-port :daemon-utils-linux-port)
   (:shadowing-import-from :daemon-unix-api-port #:open #:close)
   #+sbcl
-  (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt #:import-sys-functions-and-constants #:log-info-constant #:log-err-constant)
+  (:import-from :daemon-sbcl-sys-linux-port #:enable-interrupt #:import-sys-functions-and-constants 
+		#:log-info-constant #:log-err-constant
+		#:get-error-description)
   #-sbcl 
   #.(error "Not implemented for non sbcl lisp systems")  
   (:export #:get-daemon-command
@@ -16,7 +18,9 @@
 
 	   #:syslog-info #:syslog-err
 	   #:import-sys-functions-and-constants
-	   #:define-unix-functions))
+	   #:define-unix-functions
+
+	   #:get-error-description))
 
 (in-package :daemon-core-linux-port)
 

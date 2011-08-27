@@ -47,6 +47,9 @@
 	   #:+conf-parameters+
 	   #:plist
 	   #:config-plist
+	   
+	   ;; for debugging
+	   #:*backtrace-count*	   
 
 	   ;;; Struct functions
 	   #:extra-status
@@ -70,7 +73,15 @@
 	   #:logger-trace-destination
 	   #:logger-admin-info-destination
 	   #:logger-admin-error-destination
-	   #:logger-admin-trace-destination))
+	   #:logger-admin-trace-destination
+
+	   #:error-description
+	   #:make-error-description
+	   #:error-description-p
+	   #:copy-error-description
+	   #:error-description-condition
+	   #:error-description-backtrace
+	   #:error-description-source))
 
 (in-package :daemon-share)
 
@@ -156,6 +167,18 @@ Return value must be status value or list contained status value and value type 
      finally (return logger)))
 
 ;;;;;;;;;;;;;;;;;;;;;; end utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;; For debugging ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defparameter *backtrace-count* 10)
+(defstruct (error-description (:print-object (lambda (obj stream)
+					       (with-slots (condition backtrace source) obj
+						 (format stream "~%ERROR-DESCRIPTION:~%:CONDITION ~S~%:BACKTRACE ~S~%:SOURCE ~S~%"
+							 condition backtrace source)))))
+  condition backtrace source)
+;(progn (princ (make-error-description)) (values))
+;(defun err (format t "~%ERROR DESCRIPTION:~%~S~%" (f2))
+;;;;;;;;;;;;;;;;;;;;; end for debugging ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Pathnames ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun get-system-path ()

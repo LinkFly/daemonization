@@ -1,5 +1,8 @@
+;(print (find-package :sb-introspect))
+;(require :sb-introspect)
+;(require :sb-debug)
 (defpackage :daemonization 
-  (:use :cl :daemon-share :daemon-core-port)
+  (:use :cl :daemon-share :daemon-core-port) ;:sb-introspect :sb-debug)
   (:import-from :daemon-utils-port #:exit #:getpid)
   (:export #:daemonized #:get-daemon-log-list #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace*
 	   #:+all-daemon-commands+ #:+conf-parameters+
@@ -207,6 +210,11 @@
      if (find #\~ dir) do (return nil)
      finally (return t)))
 
+
+(defun f () 
+  ;(error "my-test-error")
+  )
+
 (declaim (ftype (function ((or pathname string null config-plist) string &key 
 			   (:on-error (member :return-error :as-ignore-errors :call-error :exit-from-lisp)) 
 			   (:recreate-pid-file-on-start t) (:print-extra-status t)))
@@ -215,9 +223,12 @@
 		       &aux (on-error-variants '(:return-error :as-ignore-errors :call-error :exit-from-lisp)))
   (let ((conf-params conf-params))
     (let ((pathname (get-system-path)))
-      (unless (check-normal-start-pathname pathname) (call-bad-start-pathname-error pathname)))  
+      (unless (check-normal-start-pathname pathname) (call-bad-start-pathname-error pathname)))      
     (handler-case 
 	(progn 
+	  ;(error "my-test-error")
+	  (f)
+
 	  (when (consp conf-params) (setf conf-params (copy-list conf-params)))  
 
 	  ;; Checking normal parameters, command, and start/load pathname 	
@@ -277,11 +288,22 @@
 		(values status extra-status)))))
       (error (err)
 	(when (eq :child *process-type*) (error err))
-	(let ((err-str (format nil "~A" err)))
+	(let ((err-str (format nil "~A ~S~%Failed (ERROR: ~A)" err (get-error-description err) err)))
 	  (when (find #\~ err-str) 
 	    (error "Bad error message - it is contain the tildes. Error message: \"~A\"." err-str))
-	  (log-err err-str))
-	(format t "ERROR: ~A~%" err)
+	  (log-err err-str)
+	  (format t "ERROR: ~A~%" err-str))
+					
+	;;;;;;;;;;;;;;;;;
+	(defun f0 (x) (1+ x) (error "test-error"))
+	(defun f1 (x) (f0 x))
+	(defun f2 ()
+	  (block error-trap
+	    (handler-bind ((error (lambda (err) (return-from error-trap (get-error-description err)))))
+	      (f1 0))))
+	;(format t "~%ERROR DESCRIPTION:~%~S~%" (f2))
+       ;;;;;;;;;;;;;;;;;
+
 	(case on-error
 	  (:exit-from-lisp (exit +ex-general+))
 	  (:call-error (error err))
