@@ -43,6 +43,11 @@
 	   ;; for setting log files	   
 	   #:*log-file-dir* #:get-log-file-dir	   
 
+	   ;; for checking parameters
+	   #:+conf-parameters+
+	   #:plist
+	   #:config-plist
+
 	   ;;; Struct functions
 	   #:extra-status
 	   #:make-extra-status
@@ -110,8 +115,36 @@ Return value must be status value or list contained status value and value type 
 (defconstant +pid-file-not-found+ 256)
 (defconstant +pid-file-exists+ 257)
 (defconstant +process-not-exists+ 258)
- 
+
+(define-constant +conf-parameters+ '(:before-init-fn :main-function :name :user :group :pid-file :pid-file-dir
+				     :before-parent-exit-fn :exit :os-params :parent-conf-file :parent-conf-file-dir)) 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun plist-p (value)
+  (and (consp value)
+       (evenp (length value))
+       (loop for key-and-rest on value by #'cddr
+	  always (keywordp (first key-and-rest)))))
+
+(deftype plist ()
+  `(satisfies plist-p))
+
+(defun get-keys-of-plist (plist)
+  (loop for key-and-rest on plist by #'cddr
+     collect (first key-and-rest)))
+
+(defun unique-elements-p (list)
+  (= (length list) (length (remove-duplicates list))))
+;(unique-elements-p '(:conf-params nil))
+(defun config-plist-p (plist &aux (keys (get-keys-of-plist plist)))
+  (cond 
+    ((not (unique-elements-p +conf-parameters+)) (error "Not unique keys in +conf-parameters+"))
+    ((not (unique-elements-p +conf-parameters+)) (error "Not unique keys in keys of plist"))
+    (t (subsetp keys +conf-parameters+))))
+
+(deftype config-plist ()
+  `(and plist
+	(satisfies config-plist-p)))
+
 (defun plist-to-logger (plist)
   (loop with logger = (make-logger)
      for cur-plist on plist by #'cddr

@@ -37,8 +37,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-constant +all-daemon-commands+ '("start" "stop" "zap" "kill" "restart" "nodaemon" "status")) 
-(define-constant +conf-parameters+ '(:before-init-fn :main-function :name :user :group :pid-file :pid-file-dir
-				     :before-parent-exit-fn :exit :os-params :parent-conf-file :parent-conf-file-dir))
+
 (define-constant 
     +bad-conf-str-err+
     (format nil 
@@ -60,14 +59,7 @@
 (defun-ext check-conf-params (conf-params &optional cmd)
 ;(setq conf-params '(:name "mydaemon" :user "lispuser" :pid-file "/home/lispuser/tmp/pid"))
   (log-info "Check conf-params ...")
-  (unless (and (zerop (mod (length conf-params) 2))
-	       (loop for key in conf-params by #'cddr
-		  if (or (not (keywordp key))
-			 (member key keys)
-			 (not (member key +conf-parameters+)))
-		  do (return)
-		  collect key into keys
-		  finally (return t)))
+  (unless (typep conf-params 'config-plist)
     (let ((err-str (format nil
 			   "~A~A"
 			   +bad-conf-str-err+
@@ -215,80 +207,86 @@
      if (find #\~ dir) do (return nil)
      finally (return t)))
 
+(declaim (ftype (function ((or pathname string null config-plist) string &key 
+			   (:on-error (member :return-error :as-ignore-errors :call-error :exit-from-lisp)) 
+			   (:recreate-pid-file-on-start t) (:print-extra-status t)))
+		daemonized))
 (defun-ext daemonized (conf-params daemon-command &key (on-error :call-error) recreate-pid-file-on-start print-extra-status 
 		       &aux (on-error-variants '(:return-error :as-ignore-errors :call-error :exit-from-lisp)))
-  (let ((pathname (get-system-path)))
-    (unless (check-normal-start-pathname pathname) (call-bad-start-pathname-error pathname)))  
-  (handler-case 
-      (progn 
-	(when (consp conf-params) (setf conf-params (copy-list conf-params)))  
+  (let ((conf-params conf-params))
+    (let ((pathname (get-system-path)))
+      (unless (check-normal-start-pathname pathname) (call-bad-start-pathname-error pathname)))  
+    (handler-case 
+	(progn 
+	  (when (consp conf-params) (setf conf-params (copy-list conf-params)))  
 
-	;; Checking normal parameters, command, and start/load pathname 	
-	(assert (member on-error on-error-variants)
-		() 
-		"Bad keyword parameter on-error = ~S. Must be one of the ~S" on-error on-error-variants)
-	(check-daemon-command daemon-command)
+	  ;; Checking normal parameters, command, and start/load pathname 	
+	  (assert (member on-error on-error-variants)
+		  () 
+		  "Bad keyword parameter on-error = ~S. Must be one of the ~S" on-error on-error-variants)
+	  (check-daemon-command daemon-command)
 
-	;;; Set the conf-params given parent files, check and correct conf-params
-	(setq conf-params (correct-and-check-conf-params conf-params 
-							 (lambda (conf-params) 
-							   (check-conf-params conf-params
-									      daemon-command))))
+;;; Set the conf-params given parent files, check and correct conf-params
+	  (setq conf-params (correct-and-check-conf-params conf-params 
+							   (lambda (conf-params) 
+							     (check-conf-params conf-params
+										daemon-command))))
 	
-	(check-and-correct-pid-file-param conf-params daemon-command)
+	  (check-and-correct-pid-file-param conf-params daemon-command)
 
-	(log-info "conf-params is: ~S" conf-params)
+	  (log-info "conf-params is: ~S" conf-params)
 
-	;;; Recreate or check is exists pid-file
-	(let ((pid-file (getf conf-params :pid-file)))
-	  (when (string-equal "start" daemon-command)
-	    (if recreate-pid-file-on-start
-		(when (probe-file pid-file) (delete-file pid-file))
-		(check-not-exists-pid-file pid-file daemon-command))))
+;;; Recreate or check is exists pid-file
+	  (let ((pid-file (getf conf-params :pid-file)))
+	    (when (string-equal "start" daemon-command)
+	      (if recreate-pid-file-on-start
+		  (when (probe-file pid-file) (delete-file pid-file))
+		  (check-not-exists-pid-file pid-file daemon-command))))
 	
-	(let* ((*process-type* :parent)
-	       (result (block into-daemonized
-			 (let ((*fn-exit* #'(lambda (&optional (status +ex-ok+) extra-status) 
-					      (return-from into-daemonized (list status extra-status)))))
-			   (case-command daemon-command
-					 ("zap" (zap-service conf-params))
-					 ("stop" (stop-service conf-params))
-					 ("kill" (kill-service conf-params))
-					 ("restart" (let ((res (block into-daemonized-lev2
-								 (let ((*fn-exit* #'(lambda (&optional (status +ex-ok+) extra-status)
-										      (return-from into-daemonized-lev2
-											(list status extra-status)))))
-								   (stop-service conf-params)))))
-						      (if (if (numberp res) 
-							      (= +ex-ok+ res)
-							      (= +ex-ok+ (first res)))
-							  (let ((res (start-service conf-params)))
-							    (funcall *fn-exit* res)))))
-					 ("start" (start-service conf-params))		   
-					 ("nodaemon" (simple-start conf-params))
-					 ("status" (status-service conf-params)))))))
-	  (when (eq :parent *process-type*)
-	    (analized-and-print-result result daemon-command conf-params :print-extra-status print-extra-status)
-	    (let (status extra-status)
-	      (if (consp result)
-		  (setq status (first result)
-			extra-status (second result))
-		  (setq status result))
-	      (when (getf conf-params :exit)
-		(exit status))
-	      (values status extra-status)))))
-    (error (err)
-      (when (eq :child *process-type*) (error err))
-      (let ((err-str (format nil "~A" err)))
-	(when (find #\~ err-str) 
-	  (error "Bad error message - it is contain the tildes. Error message: \"~A\"." err-str))
-	(log-err err-str))
-      (format t "ERROR: ~A~%" err)
-      (case on-error
-	(:exit-from-lisp (exit +ex-general+))
-	(:call-error (error err))
-	(:return-error err)
-	(:as-ignore-errors (values nil err))))))
+	  (let* ((*process-type* :parent)
+		 (result (block into-daemonized
+			   (let ((*fn-exit* #'(lambda (&optional (status +ex-ok+) extra-status) 
+						(return-from into-daemonized (list status extra-status)))))
+			     (the config-plist conf-params)
+			     (case-command daemon-command
+					   ("zap" (zap-service conf-params))
+					   ("stop" (stop-service conf-params))
+					   ("kill" (kill-service conf-params))
+					   ("restart" (let ((res (block into-daemonized-lev2
+								   (let ((*fn-exit* #'(lambda (&optional (status +ex-ok+) extra-status)
+											(return-from into-daemonized-lev2
+											  (list status extra-status)))))
+								     (stop-service conf-params)))))
+							(if (if (numberp res) 
+								(= +ex-ok+ res)
+								(= +ex-ok+ (first res)))
+							    (let ((res (start-service conf-params)))
+							      (funcall *fn-exit* res)))))
+					   ("start" (start-service conf-params))		   
+					   ("nodaemon" (simple-start conf-params))
+					   ("status" (status-service conf-params)))))))
+	    (when (eq :parent *process-type*)
+	      (analized-and-print-result result daemon-command conf-params :print-extra-status print-extra-status)
+	      (let (status extra-status)
+		(if (consp result)
+		    (setq status (first result)
+			  extra-status (second result))
+		    (setq status result))
+		(when (getf conf-params :exit)
+		  (exit status))
+		(values status extra-status)))))
+      (error (err)
+	(when (eq :child *process-type*) (error err))
+	(let ((err-str (format nil "~A" err)))
+	  (when (find #\~ err-str) 
+	    (error "Bad error message - it is contain the tildes. Error message: \"~A\"." err-str))
+	  (log-err err-str))
+	(format t "ERROR: ~A~%" err)
+	(case on-error
+	  (:exit-from-lisp (exit +ex-general+))
+	  (:call-error (error err))
+	  (:return-error err)
+	  (:as-ignore-errors (values nil err)))))))
 
 #|
 - Действия необходимые для отсоединения от терминала

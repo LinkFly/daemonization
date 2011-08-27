@@ -68,6 +68,8 @@
 			   (apply (gen-fn-log :trace #'syslog-info) "~A" (add-daemon-log fmt-str) nil))
 	*fn-log-pid* #'(lambda () (let ((*print-call* nil)) (getpid)))))
 
+(declaim (ftype (function (config-plist)) 
+		stop-service status-service zap-service kill-service start-service simple-start))
 #+daemon.as-daemon
 (progn 
   (defun-ext stop-service (params)
