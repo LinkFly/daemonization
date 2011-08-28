@@ -227,17 +227,6 @@
 				  (error "Bad error message - it is contain the tildes. Error message: \"~A\"." err-str))
 				(log-err err-str)
 				(format t "ERROR: ~A~%" err-str))
-					
-;;;;;;;;;;;;;;;;;
-			      (defun f0 (x) (1+ x) (error "test-error"))
-			      (defun f1 (x) (f0 x))
-			      (defun f2 ()
-				(block error-trap
-				  (handler-bind ((error (lambda (err) (return-from error-trap (get-error-description err)))))
-				    (f1 0))))
-					;(format t "~%ERROR DESCRIPTION:~%~S~%" (f2))
-;;;;;;;;;;;;;;;;;
-
 			      (case on-error
 				(:exit-from-lisp (exit +ex-general+))
 				(:call-error (error err))
