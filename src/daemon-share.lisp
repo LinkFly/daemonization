@@ -80,8 +80,11 @@
 	   #:error-description-p
 	   #:copy-error-description
 	   #:error-description-condition
-	   #:error-description-backtrace
-	   #:error-description-source))
+	   #:error-description-source
+	   #:error-description-place
+	   #:error-description-backtrace	   
+	   #:error-description-source-more
+	   #:error-description-corrupted-form))
 
 (in-package :daemon-share)
 
@@ -170,11 +173,15 @@ Return value must be status value or list contained status value and value type 
 
 ;;;;;;;;;;;;;;;;;;;;; For debugging ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defparameter *backtrace-count* 10)
+
 (defstruct (error-description (:print-object (lambda (obj stream)
-					       (with-slots (condition backtrace source) obj
-						 (format stream "~%ERROR-DESCRIPTION:~%:CONDITION ~S~%:BACKTRACE ~S~%:SOURCE ~S~%"
-							 condition backtrace source)))))
-  condition backtrace source)
+					       (format stream "~%")
+					       (loop for slot in '(condition source corrupted-form
+								   place backtrace source-more)
+						  do (format stream "~A: ~S~%" slot (slot-value obj slot)))
+					       )))
+  condition source corrupted-form place backtrace source-more)
+
 ;(progn (princ (make-error-description)) (values))
 ;(defun err (format t "~%ERROR DESCRIPTION:~%~S~%" (f2))
 ;;;;;;;;;;;;;;;;;;;;; end for debugging ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

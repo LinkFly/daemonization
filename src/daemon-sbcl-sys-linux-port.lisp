@@ -138,24 +138,43 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;; For debugging ;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defparameter *frames-before-error-call* 5)
+;;; SBCL dependencies matters ;;;
+(defparameter *number-of-skipped-frames* 5)
 
-(defmacro get-function-source (backtrace)
-			      `(sb-introspect:find-definition-source
-				(symbol-function
-				 (first (first (nthcdr *frames-before-error-call*
-						       ,backtrace))))))
+(defmacro get-backtrace-as-list ()
+  `(sb-debug:backtrace-as-list *backtrace-count*))
+
+(defmacro get-definition-source (fn)
+  `(sb-introspect:find-definition-source ,fn))
+
+(defmacro get-corrupted-function-place (source-struct)
+  `(sb-introspect:definition-source-character-offset ,source-struct))
+
+(defmacro get-corrupted-source-pathname (source-struct)
+  `(sb-introspect:definition-source-pathname ,source-struct))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;; Need in remove to other package ;;;;;;;;;;;
+(defmacro get-corrupted-form (backtrace)
+  `(first (nthcdr *number-of-skipped-frames* ,backtrace)))
 
 (defmacro get-error-description (err)
-  `(let ((backtrace-list (sb-debug:backtrace-as-list *backtrace-count*))
-	 (error-description (make-error-description)))
+  `(let ((error-description (make-error-description)))
      (with-accessors ((condition error-description-condition)
+		      (source error-description-source)
+		      (corrupted-form error-description-corrupted-form)
+		      (place error-description-place)
 		      (backtrace error-description-backtrace)
-		      (source error-description-source))
+		      (source-more error-description-source-more))
 	 error-description
        (setf condition ,err
-	     backtrace backtrace-list
-	     source (get-function-source backtrace)))
+	     backtrace (get-backtrace-as-list)
+	     source-more (get-definition-source
+			  (symbol-function (first (get-corrupted-form backtrace))))
+	     source (get-corrupted-source-pathname source-more)
+	     corrupted-form (get-corrupted-form backtrace)
+	     place (get-corrupted-function-place source-more)
+	     ))
      error-description))
 
 
