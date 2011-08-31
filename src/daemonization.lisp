@@ -167,6 +167,12 @@
 		    (format nil "~A~A" 
 			    (funcall #'format nil ,fmt-str ,@args)
 			    (if (and ,print-extra-prompts ,extra-prompts) (format nil " ~S" ,extra-prompts) ""))))))
+
+(defun-ext create-result-plist (result cmd conf-params &key print-extra-status &aux status extra-status)
+)
+
+(defun-ext print-result-plist (result-plist)
+  )
      
 (defun-ext analized-and-print-result (result cmd conf-params &key print-extra-status &aux status extra-status)
   (declare (ignorable conf-params))
@@ -281,16 +287,18 @@
 					   ("start" (start-service conf-params))		   
 					   ("nodaemon" (simple-start conf-params))
 					   ("status" (status-service conf-params)))))))
-	    (when (eq :parent *process-type*)
-	      (analized-and-print-result result daemon-command conf-params :print-extra-status print-extra-status)
-	      (let (status extra-status)
+	    (when (eq :parent *process-type*)	      
+	      (let (result-plist status extra-status)
+		;(setf result-plist (create-result-plist result daemon-command conf-params :print-extra-status print-extra-status))
+		;(print-result-plist result-plist)
+		(analized-and-print-result result daemon-command conf-params :print-extra-status print-extra-status)
 		(if (consp result)
 		    (setq status (first result)
 			  extra-status (second result))
 		    (setq status result))
 		(when (getf conf-params :exit)
 		  (exit status))
-		(values status extra-status)))))
+		(values result-plist (list :status status :extra-status extra-status))))))
       ))))
 
 #|
