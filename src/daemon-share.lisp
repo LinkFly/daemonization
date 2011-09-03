@@ -266,7 +266,8 @@ form."
           (t pathname))))
 
 (defun get-real-file (file &optional dir-or-fn-get-dir)
-  (declare (type (or pathname string function null) file dir-or-fn-get-dir))
+  (declare (type (or pathname string function null) dir-or-fn-get-dir)
+	   (type (or pathname string null) file))
   (when (null file) (return-from get-real-file))
   (if (absolute-path-p file)
       file
@@ -274,7 +275,7 @@ form."
 				 ((or pathname string) dir-or-fn-get-dir)
 				 (function (funcall dir-or-fn-get-dir))
 				 (null (get-system-path)))))
-	(make-pathname :defaults pathname :name file))))
+	(make-pathname :defaults pathname :name (pathname-name file) :type (pathname-type file)))))
 
 (defun get-pid-files-dir ()
   (when (absolute-path-p *pid-files-dirname*) 
