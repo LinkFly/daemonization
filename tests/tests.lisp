@@ -143,8 +143,7 @@
 	     (flet ((return-if-child () 
 		      (when (/= parent-pid (get-proc-id))
 			(return-from tests t)))
-		    (daemon-status () (getf (second (multiple-value-list (daemon-status))) :status)))
-	       
+		    (daemon-status () (getf (getf (daemon-status) :internal-result) :status)))
 	       (if (handler-case 
 		       (and 
 			(progn (format t "~%try test handling of the configuration ... ") (if (test-config-handling) 
@@ -194,8 +193,8 @@
 	     (flet ((return-if-child () 
 		      (when (funcall fn-child-proc-p)
 			(return-from tests t)))
-		    (daemon-status () (getf (second (multiple-value-list (daemon-status))) :status))
-		    (daemon-status-second-value () (second (multiple-value-list (daemon-status)))))
+		    (daemon-status () (getf (getf (daemon-status) :internal-result) :status))
+		    (daemon-status-internal-result () (getf (daemon-status) :internal-result)))
 
 	       (if (and 
 		    (progn (format t "~%try test handling of the configuration ... ") (if (test-config-handling) 
@@ -215,7 +214,7 @@
 		      (and
 		       (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) 
 			      (equal (list daemon-share:+ex-ok+ username)
-				     (let* ((status-second (daemon-status-second-value))
+				     (let* ((status-second (daemon-status-internal-result))
 					    (status (getf status-second :status))
 					    (extra-status (getf status-second :extra-status)))
 				       (list status (extra-status-user extra-status)))))
