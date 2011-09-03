@@ -42,7 +42,7 @@ done. 36. Рассмотреть возможность восстанавлив
 done. 37. Унифицировать сообщения о результатах управления демоном и возвращаемое из ф-ии daemonized значение.
 done. 38. Переименовать change-user и linux-change-user в change-user-and-group и linux-change-user-and-group.
 done. 39. Сделать ключ, в конфиге демона задающий конфиг с параметрами по умолчанию.
-40. Разобрать являются ли posix-функциями
+done. 40. Разобрать являются ли posix-функциями
  (group-gid object)                                                   
  (getgid)
  (getgrgid gid)
