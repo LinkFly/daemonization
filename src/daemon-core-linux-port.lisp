@@ -137,8 +137,8 @@
 "Slots name or/and pid-file of extra-status instance not must be fulled in this point"))
 				 (log-err err)
 				 (error err)))
-			     (setf es-name name
-				   es-pid-file pid-file)
+			     (setf (extra-status-name extra-status) name
+				   (extra-status-pid-file extra-status) pid-file)
 			     extra-status)))
      :parent-form-before-fork configure-rights-fn
      :parent-form-before-exit before-parent-exit-fn

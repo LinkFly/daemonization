@@ -43,10 +43,16 @@
 	   ;; for setting log files	   
 	   #:*log-file-dir* #:get-log-file-dir	   
 
-	   ;; for checking parameters
+	   ;; utils
+	   #:with-keys
+
+	   ;; for checking parameters and result
 	   #:+conf-parameters+
+	   #:+result-keys+
+	   #:status
 	   #:plist
 	   #:config-plist
+	   #:result-plist
 	   
 	   ;; for debugging
 	   #:*backtrace-count*	   
@@ -130,9 +136,29 @@ Return value must be status value or list contained status value and value type 
 (defconstant +pid-file-exists+ 257)
 (defconstant +process-not-exists+ 258)
 
+(deftype status ()
+  `(member ,@(list 
+	      +ex-ok+
+	      +ex-general+ 
+	      +ex-software+ 
+	      +ex-cantcreate+ 
+	      +ex-unavailable+ 
+	      +pid-file-not-found+
+	      +pid-file-exists+ 
+	      +process-not-exists+)))
+
 (define-constant +conf-parameters+ '(:before-init-fn :main-function :name :user :group :pid-file :pid-file-dir
-				     :before-parent-exit-fn :exit :os-params :parent-conf-file :parent-conf-file-dir)) 
+				     :before-parent-exit-fn :exit :os-params :parent-conf-file :parent-conf-file-dir))
+(define-constant +result-keys+ '(:result :command :status :reason :pid :pid-file :internal-result)) 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro with-keys (keys plist &body body)
+  (let ((pls (gensym "PLIST-")))
+    `(let ((,pls ,plist))
+       (symbol-macrolet ,(loop for key in keys
+			    collect `(,key (getf ,pls ,(intern (symbol-name key) :keyword))))	   
+	 ,@body))))
+
 (defun plist-p (value)
   (and (consp value)
        (evenp (length value))
@@ -152,12 +178,21 @@ Return value must be status value or list contained status value and value type 
 (defun config-plist-p (plist &aux (keys (get-keys-of-plist plist)))
   (cond 
     ((not (unique-elements-p +conf-parameters+)) (error "Not unique keys in +conf-parameters+"))
-    ((not (unique-elements-p +conf-parameters+)) (error "Not unique keys in keys of plist"))
+    ((not (unique-elements-p keys)) (error "Not unique keys in keys of plist"))
     (t (subsetp keys +conf-parameters+))))
 
 (deftype config-plist ()
   `(and plist
 	(satisfies config-plist-p)))
+
+(defun result-plist-p (plist &aux (keys (get-keys-of-plist plist)))
+  (cond 
+    ((not (unique-elements-p +result-keys+)) (error "Not unique keys in +result-keys+"))
+    ((not (unique-elements-p keys)) (error "Not unique keys in keys of result-plist"))
+    (t (and (plist-p plist) (subsetp keys +result-keys+)))))
+
+(deftype result-plist ()
+  `(satisfies result-plist-p))
 
 (defun plist-to-logger (plist)
   (loop with logger = (make-logger)
@@ -172,13 +207,13 @@ Return value must be status value or list contained status value and value type 
 ;;;;;;;;;;;;;;;;;;;;;; end utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;; For debugging ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defparameter *backtrace-count* 10)
+(defparameter *backtrace-count* 20)
 
 (defstruct (error-description (:print-object (lambda (obj stream)
 					       (format stream "~%")
 					       (loop for slot in '(condition source corrupted-form
 								   place backtrace source-more)
-						  do (format stream "~A: ~S~%" slot (slot-value obj slot)))
+						  do (format stream (substitute #\# #\~ (format nil "~A: ~S~%" slot (slot-value obj slot)))))
 					       )))
   condition source corrupted-form place backtrace source-more)
 

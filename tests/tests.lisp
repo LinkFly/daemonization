@@ -68,11 +68,13 @@
 	 (case *test-mode*
 	   (:user (list *daemon-conf*
 			cmd
+			:print-result-type :simple
 			:on-error :as-ignore-errors 
 			:recreate-pid-file-on-start t))
 	   (:root (list *root-daemon-conf*
 			cmd
-			:print-extra-status t 
+			:print-result-type :simple
+			:print-internal-result t
 			:on-error :as-ignore-errors 
 			:recreate-pid-file-on-start t)))))
 

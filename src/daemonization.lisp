@@ -167,12 +167,123 @@
 		    (format nil "~A~A" 
 			    (funcall #'format nil ,fmt-str ,@args)
 			    (if (and ,print-extra-prompts ,extra-prompts) (format nil " ~S" ,extra-prompts) ""))))))
+(defmacro for-create-result-plist (cmd-sym result-sym alist-messages internal-result)
+  `(cond 
+     ,@(loop for ((result . cmds) result-val . key-val-pairs) in alist-messages
+	  collect `((and (= ,result-sym ,result)
+			 (or ,@(loop for cmd in cmds
+				  collect `(string= ,cmd-sym ,cmd))))
+		    (append (list :result ,result-val
+				  :command ,cmd-sym)
+			    (list ,@key-val-pairs)
+			    (list :internal-result ,internal-result))))))
 
-(defun-ext create-result-plist (result cmd conf-params &key print-extra-status &aux status extra-status)
-)
+(declaim (ftype (function (status extra-status string config-plist)) create-result-plist))
+(defun-ext create-result-plist (status extra-status cmd conf-params)
+  (log-info "creating result plist  ...")
+  (let* ((result-plist
+	  (for-create-result-plist
+	   cmd 
+	   status
+	   (((+ex-software+ "start") "failed"
+	     :status nil :reason (if (and (extra-status-exit-code extra-status) 
+					  (= (extra-status-exit-code extra-status) 
+					     +ex-cantcreate+))
+				     "pid file already exists"
+				     "internal-error")
+	     :pid nil :pid-file (getf conf-params :pid-file))
+	    ((+ex-software+ "stop" "zap" "kill" "restart" "status") "failed"
+	     :status nil :reason "internal-error"
+	     :pid nil :pid-file (getf conf-params :pid-file))
+	    ((+pid-file-not-found+ "start" "stop" "zap" "kill" "restart") "failed"
+	     :status nil :reason "no-pid-file" 
+	     :pid nil :pid-file (getf conf-params :pid-file))
+	    ((+process-not-exists+ "stop") "failed"
+	     :status nil :reason "not-running" 
+	     :pid (extra-status-pid extra-status) :pid-file (extra-status-pid-file extra-status))	  
+	   
+	    ((+pid-file-not-found+ "status") "success"
+	     :status "not-running" :reason "no-pid-file" 
+	     :pid nil :pid-file (getf conf-params :pid-file))
+	    ((+ex-ok+ "status") "success"
+	     :status "running" :reason nil 
+	     :pid (extra-status-pid extra-status) :pid-file (getf conf-params :pid-file))
+	    ((+ex-unavailable+ "status") "success"
+	     :status "not-running" :reason "service-unavailable" 
+	     :pid (extra-status-pid extra-status) :pid-file (getf conf-params :pid-file))
 
-(defun-ext print-result-plist (result-plist)
-  )
+	    ((+ex-ok+ "start") "success"
+	     :status nil :reason nil
+	     :pid (extra-status-pid extra-status) :pid-file (extra-status-pid-file extra-status))
+	    ((+ex-ok+ "stop" "zap" "kill" "restart") "success"
+	     :status nil :reason nil
+	     :pid (extra-status-pid extra-status) :pid-file (extra-status-pid-file extra-status)))
+	   (list :status status :extra-status extra-status))))
+    (log-info "Ok. result-plist: ~S" result-plist)
+    result-plist))
+
+(defun-ext declension-cmd (cmd)
+  (cond 
+    ((string-equal "stop" cmd) "stopped")
+    ((string-equal "zap" cmd) "zapped")
+    ((string-equal "kill" cmd) "killed")
+    ((string-equal "start" cmd) "started")
+    ((string-equal "restart" cmd) "restarted")))       
+  
+(defun-ext result-plist-simple-printer (result-plist &optional print-internal-result)
+  (with-keys (result command status reason pid pid-file internal-result) 
+      (copy-list ;'(:result "success" :command "start" :status "started" :reason nil :pid nil :pid-file nil)
+       result-plist)
+    (macrolet ((to-strings (&rest getters)
+		 `(progn ,@(loop for getter in getters
+			      collect `(setf ,getter (princ-to-string ,getter)))))
+	       (if-not-nil (val &body body)
+		 `(if (string/= "NIL" ,val) 
+		      (progn ,@body)
+		      ""))
+	       (print-pid-and-pid-file () 
+		 `(if (not (or (string/= pid "NIL")
+			       (string/= pid-file "NIL")))
+		      ""
+		      (concatenate 'string " ("
+				   (if-not-nil pid 
+					       (concatenate 'string
+							    "pid = "
+							    pid))
+				   (if-not-nil pid-file 
+					       (concatenate 'string
+							    (if-not-nil pid " ")
+							    "pid-file = "
+							    pid-file))
+				   ")"))))
+      (to-strings result command status reason pid pid-file)
+      (format nil 
+	      "~&~A~A~%" 
+	      (cond 
+		((string-equal "success" result)
+		 (cond 
+		   ((string-equal "status" command)
+		    (concatenate 'string status
+				 (if-not-nil reason (concatenate 'string " - " reason))
+				 (print-pid-and-pid-file)))
+		   ((member command '("start" "restart" "stop" "kill" "zap") :test #'string-equal)
+		    (concatenate 'string result " " (declension-cmd command) (print-pid-and-pid-file)))))
+		((string-equal "failed" result)
+		 (concatenate 'string result " " (declension-cmd command)
+			      (if-not-nil reason (concatenate 'string " - " reason))
+			      (print-pid-and-pid-file))))
+	      (if (not print-internal-result)
+		  ""
+		   (format nil " internal-result - ~S" internal-result))))))
+
+(defun-ext print-result-plist (result-plist &key print-type print-internal-result)
+  (declare (type result-plist result-plist)
+	   (type (member :simple :none :plist) print-type))
+  (case print-type
+    (:none)
+    (:plist (format *standard-output* "~S" result-plist))
+    (:simple (princ (result-plist-simple-printer result-plist print-internal-result)
+		    *standard-output*))))
      
 (defun-ext analized-and-print-result (result cmd conf-params &key print-extra-status &aux status extra-status)
   (declare (ignorable conf-params))
@@ -218,9 +329,12 @@
 
 (declaim (ftype (function ((or pathname string null config-plist) string &key 
 			   (:on-error (member :return-error :as-ignore-errors :call-error :exit-from-lisp)) 
-			   (:recreate-pid-file-on-start t) (:print-extra-status t)))
+			   (:recreate-pid-file-on-start t) 
+			   (:print-result-type (member :simple :none :plist))
+			   (:print-internal-result t)))
 		daemonized))
-(defun-ext daemonized (conf-params daemon-command &key (on-error :call-error) recreate-pid-file-on-start print-extra-status 
+(defun-ext daemonized (conf-params daemon-command  
+		       &key (on-error :call-error) recreate-pid-file-on-start (print-result-type :simple) print-internal-result
 		       &aux (on-error-variants '(:return-error :as-ignore-errors :call-error :exit-from-lisp)))
   (let ((conf-params conf-params))
     (let ((pathname (get-system-path)))
@@ -289,17 +403,16 @@
 					   ("status" (status-service conf-params)))))))
 	    (when (eq :parent *process-type*)	      
 	      (let (result-plist status extra-status)
-		;(setf result-plist (create-result-plist result daemon-command conf-params :print-extra-status print-extra-status))
-		;(print-result-plist result-plist)
-		(analized-and-print-result result daemon-command conf-params :print-extra-status print-extra-status)
 		(if (consp result)
 		    (setq status (first result)
 			  extra-status (second result))
 		    (setq status result))
+		(setf result-plist (create-result-plist status extra-status daemon-command conf-params)) ;:print-extra-status print-extra-status))
+		(print-result-plist result-plist :print-type print-result-type :print-internal-result print-internal-result)
+		;(analized-and-print-result result daemon-command conf-params :print-extra-status print-extra-status)
 		(when (getf conf-params :exit)
 		  (exit status))
-		(values result-plist (list :status status :extra-status extra-status))))))
-      ))))
+		result-plist))))))))
 
 #|
 - Действия необходимые для отсоединения от терминала
