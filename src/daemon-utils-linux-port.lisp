@@ -10,7 +10,7 @@
   (:export #:set-current-dir #:set-umask
 	   #:detach-from-tty #:switch-to-slave-pseudo-terminal #:start-new-session
 	   #:preparation-before-grant-listen-privileged-ports	   
-	   #:set-grant-listen-privileged-ports #:linux-change-user
+	   #:set-grant-listen-privileged-ports #:linux-change-user-and-group
 	   #:fork-this-process #:create-pid-file #:read-pid-file
 	   #:fork-and-parent-exit-on-child-signal
 	   #:exit #:get-args #:getpid
@@ -107,7 +107,7 @@
 
   ) ;feature :daemon.as-daemon
 
-#+daemon.change-user
+#+daemon.change-user-and-group
  (progn
 (defun-ext admin-user-p (user)
   (string= "root" user))
@@ -118,11 +118,11 @@
 (defun-ext equal-groups (group1 group2)
   (string= group1 group2))
 
-(defun-ext linux-change-user (&key name group 
+(defun-ext linux-change-user-and-group (&key name group 
 			      &aux passwd-struct group-struct)  
   (cond
     ((and (null group) (null name))
-     (return-from linux-change-user))
+     (return-from linux-change-user-and-group))
     (t     
      (setf passwd-struct (wrap-log (getpwnam name)))
      (unless passwd-struct (call-passwd-struct-not-found-error name))
@@ -137,7 +137,7 @@
        (initgroups name gid)
        (setresuid uid uid uid)))))	
 
-);feature :daemon.change-user
+);feature :daemon.change-user-and-group
 ;;;;;;;;
 
 #+daemon.listen-privileged-ports

@@ -111,7 +111,7 @@
   (let ((*package* (find-package :daemon-sbcl-sys-linux-port)))
 
 ;; Define initgroups
-#+daemon.change-user
+#+daemon.change-user-and-group
 (def-alien-call "initgroups" int minusp (user c-string) (group sb-posix::gid-t))
      
 ;; Define constant +PR_SET_KEEPCAPS+ (already defined in begin), functions prctl,

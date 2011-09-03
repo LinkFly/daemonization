@@ -10,14 +10,14 @@
     "enabled-features.sexp"
     #|
     ;; Default:
-    '(:daemon.change-user t
+    '(:daemon.change-user-and-group t
     :daemon.listen-privileged-ports t
     :daemon.as-daemon t)
     |#
     "Configurate it. Must be string with filename contained list parameters (then file must be in directory contain this file). 
 Or PATHNAME contained full path to file contained list parameters. Or itself list parameters. List parameters 
 must be like it: 
-(:daemon.change-user t
+(:daemon.change-user-and-group t
  :daemon.listen-privileged-ports t		     
  :daemon.as-daemon t)
 These parameters will be included as features into lisp system.")  

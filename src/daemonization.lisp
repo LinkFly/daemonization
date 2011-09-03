@@ -504,7 +504,7 @@
 #|
 ;;Before fork
 (prepare-before-grant)
-(change-user ...) 
+(change-user-and-group ...) 
 (set-grant)
 
 ... fork ...

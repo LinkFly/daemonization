@@ -14,9 +14,9 @@
 
 (in-package :daemon-utils-port)
 
-(defun-ext change-user (&key user group)
-  #-linux (error "CHANGE-USER not implemented on not Linux")
-  #+linux (linux-change-user :name user :group group))
+(defun-ext change-user-and-group (&key user group)
+  #-linux (error "CHANGE-USER-AND-GROUP not implemented on not Linux")
+  #+linux (linux-change-user-and-group :name user :group group))
 
 (defun-ext preparation-before-grant ()
   #+linux 
@@ -33,9 +33,9 @@
 (defun-ext admin-current-user-p ()
   (admin-user-p (get-username)))
 
-(defun-ext is-admin-user-and-change-user-p (new-user new-group)
+(defun-ext is-admin-user-and-change-user-and-group-p (new-user new-group)
   (when (and (null new-user) (null new-group))
-    (return-from is-admin-user-and-change-user-p))
+    (return-from is-admin-user-and-change-user-and-group-p))
   (let* ((cur-user (get-username))
 	 (cur-group (get-groupname))
 	 (is-new-user-current (equal-users cur-user new-user)))
@@ -46,10 +46,10 @@
 	 (not is-new-user-current)))) 
      
 (defun-ext restrict-rights (&key new-user new-group)      
-  #+daemon.change-user
-  (when (is-admin-user-and-change-user-p new-user new-group)  
+  #+daemon.change-user-and-group
+  (when (is-admin-user-and-change-user-and-group-p new-user new-group)  
     (preparation-before-grant)        
-    (change-user :user new-user :group new-group)
+    (change-user-and-group :user new-user :group new-group)
     (set-grant)))
 
 #+daemon.as-daemon
