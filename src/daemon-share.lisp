@@ -309,36 +309,36 @@ form."
 ;;;;;;;;;;;;;;;;;;;;;;;; end pathnames ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;; Conditions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define-condition file-exists-error (error) 
+(define-condition file-exists-error () 
   ((pathname :initarg :pathname :accessor file-exists-error-pathname))
   (:report (lambda (condition stream)
 	     (format stream "File already exists: ~S" (file-exists-error-pathname condition)))))
 
-(define-condition passwd-struct-not-found-error (error) 
+(define-condition passwd-struct-not-found-error () 
   ((user-name :initarg :user-name :accessor user-name))
   (:report (lambda (condition stream)
 	     (format stream "Not found passwd structure. User name = ~S. Bad user name?"
 		     (user-name condition)))))
 
-(define-condition group-struct-not-found-error (error) 
+(define-condition group-struct-not-found-error () 
   ((group-name :initarg :group-name :accessor group-name))
   (:report (lambda (condition stream)
 	     (format stream "Not found group structure. Group name = ~S. Bad group name?" 
 		     (group-name condition)))))
 
-(define-condition timeout-forked-process-response-error (error)
+(define-condition timeout-forked-process-response-error ()
   ((timeout :initarg :timeout :accessor timeout))
   (:report (lambda (condition stream)
 	     (format stream "Created daemon not response. Very small *timeout-daemon-response*(~A) or daemon init error(not running)?"
 		     (timeout condition)))))
 
-(define-condition group-change-but-user-not-change-error (error)
+(define-condition group-change-but-user-not-change-error ()
   ((group-name :initarg :group-name :accessor group-name))
   (:report (lambda (condition stream)
 	     (format stream "Can't change the group, but not modify user. Group name: ~S"
 		     (group-name condition)))))
 
-(define-condition bad-interface-error (error)
+(define-condition bad-interface-error ()
   ((fn-name :initarg :fn-name :accessor fn-name)
    (args-lambda-list :initarg :args-lambda-list :accessor args-lambda-list)
    (target-package :initarg :target-package :accessor target-package)
@@ -349,13 +349,13 @@ form."
 		       "Bad interface. Function name: ~A. Lambda-list: ~A. Target package: ~A. Source package: ~A"
 		       fn-name args-lambda-list (package-name target-package) (package-name source-package))))))
 
-(define-condition bad-start-pathname-error (error)
+(define-condition bad-start-pathname-error ()
   ((source/load-pathname :initarg :source/load-pathname :accessor source/load-pathname))
   (:report (lambda (condition stream)
 	     (format stream "Bad source/load pathname. Character <Tilde> in the way. Pathname: ~A"
 		     (source/load-pathname condition)))))
 
-(define-condition denied-change-user-error (error)
+(define-condition denied-change-user-error ()
   ((cur-user :initarg :cur-user :accessor cur-user)
    (new-user :initarg :new-user :accessor new-user))
   (:report (lambda (condition stream)
