@@ -154,9 +154,25 @@
 		    finally (return (cons begin-str result)))
 		 (list ")"))))
 
+(defun slashing-str (str)
+  (if (not (stringp str))
+      str
+      (loop 
+	 for char across str
+	 when (char= #\" char) collect #\\ into result
+	 collect char into result
+	 finally (return (coerce result 'string)))))
+
+(defun slashing-str-args (args)
+  (mapcar (lambda (arg) 	
+	    (if (not (stringp arg))
+		arg
+		(slashing-str arg)))
+	  args))
+
 (defun logging (fn-log format-str &rest args)
   (let ((*print-pretty* nil)) 
-    (apply fn-log (funcall #'wrap-fmt-str format-str :indent (get-indent)) args)))
+    (apply fn-log (funcall #'wrap-fmt-str format-str :indent (get-indent)) (slashing-str-args args))))
 
 (defmacro log-info (format-str &rest args)
   `(let ((fn-log (get-fn-log-info)))
