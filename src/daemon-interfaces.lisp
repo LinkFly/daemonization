@@ -17,32 +17,8 @@
 
 ;;; For shadowing in daemon-unix-api 
   (define-constant +for-daemon-unix-functions+  ;(makunbound '+for-daemon-unix-functions+)
-      '((syslog priority format &rest args)
-
-	(open pathname flags &optional mode)
-	(ioctl fd cmd &optional arg)
-	(close fd)
-	(grantpt fd)
-	(unlockpt fd)
-	(ptsname fd)
-	(dup oldfd)
-	(dup2 oldfd newfd)
-	(setsid)
-	(getpwnam login-name)
-
-	(fork)      
-	(exit &optional (status +ex-ok+))
-	(kill pid signal)
-
-	(getcwd)
-	(chdir pathname)
-	(umask mode)
-	(getpid)
-	(getgrnam login-name) 
-	(getppid)
-
-	(wait &optional statusptr)
-
+      '(
+	;; IEEE Std 1003.1-2008 (POSIX.1-2008)
 	o-rdwr
 	o-rdonly
 	o-creat 
@@ -51,34 +27,60 @@
 	sigusr1
 	sigchld
 	sigkill
- 
-					;not posix
-	(group-gid object)
+	
+	(syslog priority format &rest args)
+	(open pathname flags &optional mode)
+	(ioctl fd cmd &optional arg)
+	(close fd)
+	(grantpt fd)
+	(unlockpt fd)
+	(ptsname fd)
+	(dup oldfd)
+	(dup2 oldfd newfd)
+	(setsid)	
+
+	(fork)      
+	(exit &optional (status +ex-ok+))
+	(kill pid signal)
+	(wait &optional statusptr)
+
+	(getcwd)
+	(chdir pathname)
+	(umask mode)
+	(getpid)
+	(getppid)
+
+	(getpwnam login-name)
+	(getgrnam login-name) 
 	(getgid)
-	(getgrgid gid)
-	(group-name object)
+	(getgrgid gid)	
+
+	;;not posix but getters for posix fields of group and passwd structures
+	(group-gid object)
+	(group-name object)	
+	(passwd-gid object)	
+	(passwd-uid object)
 	
-	(passwd-gid object)
-	(setresgid rgid egid sgid)
+	;; not posix
 	(initgroups user group)
+	(setresgid rgid egid sgid)
 	(setresuid ruid euid suid)
-	
+	s-iread
+	s-iroth 
+	s-iwrite
+	tiocnotty		
+
+	;; not posix - capabilities
 	#+daemon.listen-privileged-ports
 	(prctl option arg)
+	#+daemon.listen-privileged-ports
+	+pr_set_keepcaps+ 
 	#+daemon.listen-privileged-ports
 	(cap-from-text text)
 	#+daemon.listen-privileged-ports
 	(cap-set-proc cap_p)
 	#+daemon.listen-privileged-ports
-	(cap-free cap_p)      
-      
-	(passwd-uid object)
-
-	s-iread
-	s-iroth 
-	s-iwrite
-	+pr_set_keepcaps+ 
-	tiocnotty		
+	(cap-free cap_p)      		
 	))
 
   (defun get-unix-functions ()

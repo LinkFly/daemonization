@@ -15,7 +15,7 @@
   (:shadowing-import-from :sb-posix
 			  #:sigusr1 #:sigchld #:sigkill
 			  #:O-RDWR #:O-RDONLY #:O-WRONLY #:O-CREAT #:O-TRUNC 
-			  #:S-IREAD #:S-IWRITE #:S-IROTH
+			  #:s-iread #:s-iwrite #:S-iroth
 			  #:ioctl #:close #:syslog #:log-err #:log-info
 			  #:stat #:stat-uid #:passwd-name #:getpwuid)
   ;;fork and open defined follow with using sb-posix:fork and sb-posix:open

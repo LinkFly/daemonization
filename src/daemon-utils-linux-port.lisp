@@ -61,12 +61,12 @@
 			  (ptsname fdm)))
 	     (fds (open slavename O-RDONLY))
 	     (out-fd (open out 
-			   (c-bit-or O-WRONLY O-CREAT O-TRUNC)
-			   (c-bit-or S-IREAD S-IWRITE S-IROTH)))
+			   (c-bit-or o-wronly o-creat o-trunc)
+			   (c-bit-or s-iread s-iwrite s-iroth)))
 	     (err-fd (if (not (equal err out))
 			 (open err 
-			       (c-bit-or O-WRONLY O-CREAT O-TRUNC)
-			       (c-bit-or S-IREAD S-IWRITE S-IROTH))
+			       (c-bit-or o-wronly o-creat o-trunc)
+			       (c-bit-or s-iread s-iwrite s-iroth))
 			 (if out (dup out-fd)))))
 	(close 0)
 	(dup2 fds 0)
