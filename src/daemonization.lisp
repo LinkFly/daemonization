@@ -142,11 +142,9 @@
   (let ((pid-file (getf conf-params :pid-file))
 	(pid-file-dir (getf conf-params :pid-file-dir)))	  
     (when pid-file
-      (unless (absolute-path-p pid-file)
-	(unless pid-file-dir (setf pid-file-dir (get-pid-files-dir)))
-	(setf (getf conf-params :pid-file) 
-	      (setf pid-file (make-pathname :defaults (pathname-as-directory pid-file-dir)
-					    :name pid-file)))))))
+      (setf (getf conf-params :pid-file) 
+	    (get-real-file pid-file 
+			   (if pid-file-dir pid-file-dir #'get-pid-files-dir))))))
 
 (defun-ext check-not-exists-pid-file (pid-file cmd)
   (let ((err-str "pid-file ~S is already exists (daemon command: ~A)"))
