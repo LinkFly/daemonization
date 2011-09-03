@@ -14,6 +14,7 @@
 	   #:call-timeout-forked-process-response-error #:timeout-forked-process-response-error
 	   #:call-bad-interface-error #:bad-interface-error
 	   #:call-bad-start-pathname-error #:bad-start-pathname-error
+	   #:call-denied-change-user-error #:denied-change-user-error
 	   #:pathname-as-directory 
 	   #:*timeout-daemon-response*	   
 	   #:*listen-privileged-ports*
@@ -353,6 +354,17 @@ form."
   (:report (lambda (condition stream)
 	     (format stream "Bad source/load pathname. Character <Tilde> in the way. Pathname: ~A"
 		     (source/load-pathname condition)))))
+
+(define-condition denied-change-user-error (error)
+  ((cur-user :initarg :cur-user :accessor cur-user)
+   (new-user :initarg :new-user :accessor new-user))
+  (:report (lambda (condition stream)
+	     (format stream "Denied changing user when current user is not administrator. Current user: ~A. New user: ~A"
+		     (cur-user condition)
+		     (new-user condition)))))
+
+(defun call-denied-change-user-error (cur-user new-user)
+  (error 'denied-change-user-error :cur-user cur-user :new-user new-user))
 
 (defun call-bad-start-pathname-error (source/load-pathname)
   (error 'bad-start-pathname-error

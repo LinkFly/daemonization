@@ -44,6 +44,9 @@
     (when (and (or is-new-user-current (null new-user))
 	       (and new-group (not (equal-groups cur-group new-group))))
       (call-group-change-but-user-not-change-error new-group))
+    (unless (or (admin-user-p cur-user)
+	        is-new-user-current)
+      (call-denied-change-user-error cur-user new-user))
     (and (admin-user-p cur-user)
 	 (not is-new-user-current)))) 
      
