@@ -22,13 +22,15 @@
   #+linux 
   (progn 
     #+daemon.listen-privileged-ports
-    (preparation-before-grant-listen-privileged-ports)))
+    (when *listen-privileged-ports*
+      (preparation-before-grant-listen-privileged-ports))))
 
 (defun-ext set-grant ()
   #+linux 
   (progn 
     #+daemon.listen-privileged-ports
-    (set-grant-listen-privileged-ports)))
+    (when *listen-privileged-ports*
+      (set-grant-listen-privileged-ports))))
 
 (defun-ext admin-current-user-p ()
   (admin-user-p (get-username)))

@@ -102,8 +102,9 @@
      (getf params :pid-file)
      :before-parent-exit-fn (getf params :before-parent-exit-fn)
      :configure-rights-fn #'(lambda () 
-			      (restrict-rights :new-user (getf params :user) 
-					       :new-group (getf params :group)))
+			      (let ((*listen-privileged-ports* (getf params :listen-privileged-ports)))
+				(restrict-rights :new-user (getf params :user) 
+						 :new-group (getf params :group))))
      :preparation-fn #'isolate-process
      :before-init-fn (getf params :before-init-fn)
      :main-fn (getf params :main-function)
@@ -112,6 +113,7 @@
   ) ;feature :as-daemon					
 
 (defun-ext simple-start (params)
-  (restrict-rights :new-user (getf params :user) 
-		   :new-group (getf params :group))
+  (let ((*listen-privileged-ports* (getf params :listen-privileged-ports)))
+    (restrict-rights :new-user (getf params :user) 
+		     :new-group (getf params :group)))
   (start-as-no-daemon (getf params :main-function)))

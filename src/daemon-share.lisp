@@ -16,7 +16,8 @@
 	   #:call-bad-start-pathname-error #:bad-start-pathname-error
 	   #:pathname-as-directory 
 	   #:*timeout-daemon-response*	   
-	   
+	   #:*listen-privileged-ports*
+
 	   #:plist-to-logger
 
 	   ;;; Logging
@@ -106,6 +107,8 @@
 (defparameter *default-conf-file-name* "default.conf" "From this file do reading all are not setting parameters")
 (defparameter *conf-log-file* "default-logging.conf" "Parameters for logging")
 
+(defparameter *listen-privileged-ports* t "If t enabled feature listening privileged (system) ports")
+
 (defstruct logger
   (files-dir "logs" :type string)
   (admin-files-dir "logs" :type string)
@@ -148,7 +151,8 @@ Return value must be status value or list contained status value and value type 
 	      +process-not-exists+)))
 
 (define-constant +conf-parameters+ '(:before-init-fn :main-function :name :user :group :pid-file :pid-file-dir
-				     :before-parent-exit-fn :exit :os-params :parent-conf-file :parent-conf-file-dir))
+				     :before-parent-exit-fn :exit :os-params :parent-conf-file :parent-conf-file-dir
+				     :listen-privileged-ports))
 (define-constant +result-keys+ '(:result :command :status :reason :pid :pid-file :internal-result)) 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
