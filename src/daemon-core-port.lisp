@@ -47,14 +47,9 @@
       
       (typecase file-stream-system
 	((eql :system) (apply fn-system-log fmt-str args))
-	(stream (apply #'format file-stream-system fmt-str args))
-	((or pathname string) 
-	 (with-open-file (stream file-stream-system
-				 :direction :output
-				 :if-exists :append
-				 :if-does-not-exist :create)
-	   (apply #'format stream fmt-str args)
-	   (force-output))))))) 
+	((or pathname string stream) 
+	 (apply #'safe-write file-stream-system fmt-str args)
+	 (force-output))))))
 
 (defun logging-init ()
   (setf *logger* (plist-to-logger (with-open-file (stream (get-logging-conf-file))

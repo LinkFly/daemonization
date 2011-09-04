@@ -4,7 +4,8 @@
   #+sbcl	   
   (:import-from :daemon-sbcl-sys-linux-port 
 		#:enable-interrupt #:get-args
-		#:stat #:stat-uid #:passwd-name #:getpwuid)
+		#:stat #:stat-uid #:passwd-name #:getpwuid
+		#:safe-write)
   #-sbcl 
   #.(error "Not implemented for non sbcl lisp systems")
   (:export #:set-current-dir #:set-umask
@@ -19,7 +20,8 @@
 	   #:get-groupname
 	   #:admin-user-p
 	   #:equal-users
-	   #:equal-groups))   
+	   #:equal-groups
+	   #:safe-write))   
 
 (in-package :daemon-utils-linux-port)
 

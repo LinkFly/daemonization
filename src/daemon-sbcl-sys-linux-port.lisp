@@ -10,14 +10,15 @@
 		#:kill #:getpid #:getppid
 		#:getgid #:getgrgid #:group-name
 		#:chdir #:getcwd #:umask #:setsid #:dup #:dup2
-		#:wait)
+		#:wait)		
 
   (:shadowing-import-from :sb-posix
 			  #:sigusr1 #:sigchld #:sigkill
 			  #:O-RDWR #:O-RDONLY #:O-WRONLY #:O-CREAT #:O-TRUNC 
 			  #:s-iread #:s-iwrite #:S-iroth
 			  #:ioctl #:close #:syslog #:log-err #:log-info
-			  #:stat #:stat-uid #:passwd-name #:getpwuid)
+			  #:stat #:stat-uid #:passwd-name #:getpwuid
+			  #:lockf #:f-tlock #:eagain #:syscall-errno)
   ;;fork and open defined follow with using sb-posix:fork and sb-posix:open
   (:shadow #:open #:fork)
 
@@ -41,7 +42,8 @@
 
 	   #:log-info-constant #:log-err-constant
 	   
-	   #:get-error-description)) 
+	   #:get-error-description
+	   #:safe-write)) 
 
 (in-package :daemon-sbcl-sys-linux-port)
 
@@ -176,6 +178,29 @@
 	     place (get-corrupted-function-place source-more)
 	     ))
      error-description))
+
+(defparameter *safe-write-sleep* 0.01)
+(defun safe-write (pathname-or-stream fmt-str &rest args &aux stream)
+  (setf stream
+	(if (streamp pathname-or-stream)
+	    pathname-or-stream
+	    (cl:open pathname-or-stream :direction :output :if-does-not-exist :create :if-exists :append)))
+  (unwind-protect 
+       (loop
+	  until (block try-lock
+		  (handler-bind ((error (lambda (condition)
+					  (if (or (= eagain 
+						     (syscall-errno condition))
+						  (= sb-posix:eacces
+						     (syscall-errno condition)))
+					      (return-from try-lock)
+					      (error condition)))))
+		    (lockf stream sb-posix:f-tlock 0)
+		    (apply #'format stream fmt-str args)
+		    (close stream)))
+	        
+	  do (sleep *safe-write-sleep*))
+    (close stream)))
 
 
     

@@ -10,7 +10,8 @@
 	   #:get-args
 	   #:getpid
 	   #:recreate-file-allow-write-other
-	   #:admin-current-user-p))	   
+	   #:admin-current-user-p
+	   #:safe-write))	   
 
 (in-package :daemon-utils-port)
 
