@@ -29,6 +29,11 @@
 
 (in-package :daemonization)
 
+;;;;; Initialization ;;;;;;;;;;
+;;; For correct reset :line property (in log-plist, in call *fn-correct-log-plist*)
+(setf *main-function-symbol* 'daemonized)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Logging checking
 ;(log-info "test")
@@ -97,7 +102,7 @@
      for pair in pairs
      append pair)) ;sort-conf-params
 
-(defun-ext equal-conf-params (conf-params1 conf-params2)
+(defun-ext equal-conf-params (conf-params1 conf-params2)  
   (equalp (sort-conf-params conf-params1) (sort-conf-params conf-params2)))
 
 (defun-ext normalize-conf-params (params-or-file)
@@ -132,7 +137,7 @@
 				   (merge-conf-params cur-params (pop result))))
 		      ((null result) cur-params)))))))
 
-(defun-ext probe-conf-params (conf-params) 
+(defun-ext probe-conf-params (conf-params)   
   (let ((*fn-log-info* nil)
 	(*fn-log-err* nil)
 	(*print-call* nil))
@@ -324,6 +329,9 @@
   (loop for dir in (rest (pathname-directory pathname))
      if (find #\~ dir) do (return nil)
      finally (return t)))
+
+;;; Setted *main-function-symbol* in 'daemonization:daemonized for correct reset :line property (in log-plist, in call 
+;;;   *fn-correct-log-plist*). Look at the begin in Initialization.
 
 (declaim (ftype (function ((or pathname string null config-plist) string &key 
 			   (:on-error (member :return-error :as-ignore-errors :call-error :exit-from-lisp)) 

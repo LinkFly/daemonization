@@ -5,12 +5,16 @@
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
 	   #:*print-call* #:*print-called-form-with-result*
 	   #:*print-pid*
-	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* #:*log-prefix*
+	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* 
+	   #:*fn-log-pid* #:*fn-correct-log-plist*
+	   #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
-	   #:*print-log-datetime* #:*fn-log-pid*
+	   #:*print-log-datetime* 
 	   #:*disabled-functions-logging*
 	   #:*disabled-layers-logging*
-	   #:*process-type*))
+	   #:*process-type*
+	   #:*log-line-number*
+	   #:*print-log-line-number*))
 
 (in-package :daemon-logging)
 
@@ -32,6 +36,8 @@
 (defparameter *print-trace-function* nil)
 (defparameter *print-pid* t)
 (defparameter *simple-log* nil)
+(defparameter *log-line-number* 0)
+(defparameter *print-log-line-number* t)
 
 (defparameter *process-type* nil)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -48,6 +54,8 @@
 (defparameter *fn-log-trace* #'(lambda (fmt-str)
 				(funcall #'princ fmt-str)))
 (defparameter *fn-log-pid* nil)
+(defparameter *fn-correct-log-plist* #'identity)
+					 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;; Logging native parameter ;;;;;;;;;;
@@ -109,6 +117,10 @@
       (get-decoded-time)
     (format nil "~D.~2,'0D.~2,'0D ~2,'0D:~2,'0D:~2,'0D" year month date hour min sec)))
 
+(defun is-property-p (prop plist)
+  (loop for (key . rest) on plist by #'cddr
+     when (eq prop key) do (return t)))
+
 (defmacro create-log-plist (&rest details)
   (cons 'append 
 	(loop 
@@ -124,6 +136,7 @@
   (setq log-plist
 	(create-log-plist
 	 (:daemonization *log-mode*)
+	 (:line *log-line-number* *print-log-line-number*)
 	 (:message fmt-str (member *log-mode* '(:info :error)))
 	 (:call fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :call) *print-call*))
 	 (:result fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :result) *print-call*))
@@ -133,20 +146,32 @@
 	 (:layer (get-log-layer) *print-log-layer*)
 	 (:trace-fn *trace-fn*)
 	 (:type-proc *process-type*)))
+  (setq log-plist (funcall *fn-correct-log-plist* log-plist))
   (apply 'concatenate 
 	 (append `(string ,(string #\Newline) "(")
 		 (loop 
-		    with begin-str = (format nil 
-					     "~S ~A"
-					     (first log-plist) 
-					     (if (eq :info (second log-plist)) 
-						 (progn (setq log-plist (rest (rest log-plist)))
-							(concatenate 'string 
-								     (format nil "~6A ~A \"" "" indent)
-								     (second log-plist)
-								     "\""))
-						 (format nil "~6S ~A" (second log-plist) indent)))
-		    for pair on (rest (rest log-plist)) by #'cddr 
+		    with message = (getf log-plist :message)
+		    with line-number = (getf log-plist :line)
+		    with cur-main-key = (loop for key in '(:message :call :result)
+					   if (is-property-p key log-plist) do (return key))
+		    with begin-str = (prog1 
+					 (concatenate 'string 
+						      (prog1 (format nil "~S ~6S" (first log-plist) (second log-plist))
+							(remf log-plist (first log-plist)))
+						      (concatenate 'string 
+								   (if (is-property-p :line log-plist)
+								       (format nil " ~S ~9A " :line line-number)
+								       " ")
+								   (format nil "~8S "cur-main-key)
+								   indent
+								   (let ((main-value (getf log-plist cur-main-key)))
+								     (cond 
+								       ((eq :message cur-main-key) 
+									(concatenate 'string " \"" message "\""))
+								       ((member cur-main-key '(:call :result))
+									main-value)))))
+				       (loop for key in '(:line :message :call :result) do (remf log-plist key)))
+		    for pair on log-plist by #'cddr 
 		    collect (if (member (first pair) '(:call :result :called-form))
 				(format nil " ~S ~A" (first pair) (second pair))
 				(format nil " ~S ~S" (first pair) (second pair))) 

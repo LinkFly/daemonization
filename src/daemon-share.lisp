@@ -34,6 +34,10 @@
 	   #:*disabled-functions-logging*
 	   #:*disabled-layers-logging*
 	   #:*fn-log-info-load*
+	   #:*log-line-number*
+	   #:*print-log-line-number*
+	   #:*fn-correct-log-plist*
+	   #:*main-function-symbol*
 
 	   ;; for finding pid-files 
 	   #:*pid-files-dirname* #:get-pid-files-dir 
@@ -92,7 +96,8 @@
 	   #:error-description-place
 	   #:error-description-backtrace	   
 	   #:error-description-source-more
-	   #:error-description-corrupted-form))
+	   #:error-description-corrupted-form
+	   #:logger-count))
 
 (in-package :daemon-share)
 
@@ -109,6 +114,8 @@
 (defparameter *conf-log-file* "default-logging.conf" "Parameters for logging")
 
 (defparameter *listen-privileged-ports* t "If t enabled feature listening privileged (system) ports")
+(defparameter *main-function-symbol* nil "Setting in :daemonization package. Needed for correct reset
+:line property (in log-plist) in function call *fn-correct-log-plist*")
 
 (defstruct logger
   (files-dir "logs" :type string)
@@ -118,7 +125,9 @@
   (trace-destination :system :type (or string pathname (eql :system)))
   (admin-info-destination :system :type (or string pathname (eql :system)))
   (admin-error-destination :system :type (or string pathname (eql :system)))
-  (admin-trace-destination :system :type (or string pathname (eql :system))))
+  (admin-trace-destination :system :type (or string pathname (eql :system)))
+  (count '(1 1)))
+
 (declaim (type (or null logger) *logger*))
 (defparameter *logger* nil "Contains logger object with the parameters readed from *conf-log-file*")
 
