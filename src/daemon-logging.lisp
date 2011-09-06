@@ -14,7 +14,9 @@
 	   #:*disabled-layers-logging*
 	   #:*process-type*
 	   #:*log-line-number*
-	   #:*print-log-line-number*))
+	   #:*print-log-line-number*
+	   #:*print-username* #:*print-groupname*
+	   #:*fn-get-username* #:*fn-get-groupname*))
 
 (in-package :daemon-logging)
 
@@ -35,6 +37,8 @@
 (defparameter *print-log-datetime* nil)
 (defparameter *print-trace-function* nil)
 (defparameter *print-pid* t)
+(defparameter *print-username* t)
+(defparameter *print-groupname* t)
 (defparameter *simple-log* nil)
 (defparameter *log-line-number* 0)
 (defparameter *print-log-line-number* t)
@@ -54,6 +58,8 @@
 (defparameter *fn-log-trace* #'(lambda (fmt-str)
 				(funcall #'princ fmt-str)))
 (defparameter *fn-log-pid* nil)
+(defparameter *fn-get-username* nil)
+(defparameter *fn-get-groupname* nil)
 (defparameter *fn-correct-log-plist* #'identity)
 					 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -145,7 +151,9 @@
 	 (:pid (funcall *fn-log-pid*) *print-pid*)
 	 (:layer (get-log-layer) *print-log-layer*)
 	 (:trace-fn *trace-fn*)
-	 (:type-proc *process-type*)))
+	 (:type-proc *process-type*)
+	 (:user-name (funcall *fn-get-username*) *print-username*)
+	 (:group-name (funcall *fn-get-groupname*) *print-groupname*)))
   (setq log-plist (funcall *fn-correct-log-plist* log-plist))
   (apply 'concatenate 
 	 (append `(string ,(string #\Newline) "(")

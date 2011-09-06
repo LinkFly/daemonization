@@ -11,7 +11,9 @@
 	   #:getpid
 	   #:recreate-file-allow-write-other
 	   #:admin-current-user-p
-	   #:safe-write))	   
+	   #:safe-write
+	   #:get-username
+	   #:get-groupname))	   
 
 (in-package :daemon-utils-port)
 

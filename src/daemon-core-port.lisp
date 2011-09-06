@@ -78,7 +78,9 @@
 					 (when (is-daemonized-result?)
 					   (setf (first count-ls) (incf (first count-ls)))
 					   (setf (second count-ls) 1))
-					 log-plist))))))
+					 log-plist))))
+	*fn-get-username* (lambda () (let ((*print-call* nil)) (get-username)))
+	*fn-get-groupname* (lambda () (let ((*print-call* nil)) (get-groupname)))))
 
 (declaim (ftype (function (config-plist)) 
 		stop-service status-service zap-service kill-service start-service simple-start))

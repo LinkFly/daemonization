@@ -38,6 +38,8 @@
 	   #:*print-log-line-number*
 	   #:*fn-correct-log-plist*
 	   #:*main-function-symbol*
+	   #:*print-username* #:*print-groupname*
+	   #:*fn-get-username* #:*fn-get-groupname*
 
 	   ;; for finding pid-files 
 	   #:*pid-files-dirname* #:get-pid-files-dir 
