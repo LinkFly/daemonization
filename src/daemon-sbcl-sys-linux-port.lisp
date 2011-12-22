@@ -112,31 +112,31 @@
 (defun import-sys-functions-and-constants ()
   (let ((*package* (find-package :daemon-sbcl-sys-linux-port)))
 
-;; Define initgroups
-#+daemon.change-user-and-group
-(def-alien-call "initgroups" int minusp (user c-string) (group sb-posix::gid-t))
+    ;; Define initgroups
+    #+daemon.change-user-and-group
+    (def-alien-call "initgroups" int minusp (user c-string) (group sb-posix::gid-t))
      
-;; Define constant +PR_SET_KEEPCAPS+ (already defined in begin), functions prctl,
-;;  functions for grant capabilities: cap-from-text, cap-set-proc, cap-free
-#+daemon.listen-privileged-ports 
-(progn 
-  (def-alien-call "prctl" int minusp (option int) (arg int))
-  ;; For compilation following functions, "libcap.so" library must be loaded into 
-  ;; compiling system (look at the begining)
-  (def-alien-call "cap_from_text" (* char) null-alien (text c-string))
-  (def-alien-call "cap_set_proc" int minusp (cap_p (* char)))
-  (def-alien-call "cap_free" int minusp (cap_p (* char)))
-  ) ;progn for :daemon.listen-privileged-ports feature
+    ;; Define constant +PR_SET_KEEPCAPS+ (already defined in begin), functions prctl,
+    ;;  functions for grant capabilities: cap-from-text, cap-set-proc, cap-free
+    #+daemon.listen-privileged-ports 
+    (progn 
+      (def-alien-call "prctl" int minusp (option int) (arg int))
+      ;; For compilation following functions, "libcap.so" library must be loaded into 
+      ;; compiling system (look at the begining)
+      (def-alien-call "cap_from_text" (* char) null-alien (text c-string))
+      (def-alien-call "cap_set_proc" int minusp (cap_p (* char)))
+      (def-alien-call "cap_free" int minusp (cap_p (* char)))
+      )		    ;progn for :daemon.listen-privileged-ports feature
 
-;; Define functions: "grantpt", "unlockpt", and "ptsname". 
-;; Also "tiocnotty" constant (already defined in begin).
-#+daemon.as-daemon
-(progn 
-  (def-alien-call "grantpt" int minusp (fd sb-posix::file-descriptor))
-  (def-alien-call "unlockpt" int minusp (fd sb-posix::file-descriptor))
-  (def-alien-call "ptsname" c-string null (fd sb-posix::file-descriptor))      	 
-  ) ;progn for :daemon.as-daemon feature
-)) ;let, defun import-sys-functions-and-constants
+    ;; Define functions: "grantpt", "unlockpt", and "ptsname". 
+    ;; Also "tiocnotty" constant (already defined in begin).
+    #+daemon.as-daemon
+    (progn 
+      (def-alien-call "grantpt" int minusp (fd sb-posix::file-descriptor))
+      (def-alien-call "unlockpt" int minusp (fd sb-posix::file-descriptor))
+      (def-alien-call "ptsname" c-string null (fd sb-posix::file-descriptor))      	 
+      )			;progn for :daemon.as-daemon feature
+    ))			;let, defun import-sys-functions-and-constants
 
 
 ;;;;;;;;;;;;;;;;;;;;;;; For debugging ;;;;;;;;;;;;;;;;;;;;;;;;;;
