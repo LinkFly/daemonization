@@ -99,7 +99,8 @@
 	   #:error-description-backtrace	   
 	   #:error-description-source-more
 	   #:error-description-corrupted-form
-	   #:logger-count))
+	   #:logger-count
+	   #:log-info-load))
 
 (in-package :daemon-share)
 
@@ -318,6 +319,12 @@ form."
 		 :name *conf-log-file*))
 
 ;;;;;;;;;;;;;;;;;;;;;;;; end pathnames ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;; logging ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defmacro log-info-load (log-str &rest args) 
+  `(let ((*fn-log-info* *fn-log-info-load*))
+     (log-info ,log-str ,@args)
+     ))
 
 ;;;;;;;;;; Conditions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define-condition file-exists-error () 

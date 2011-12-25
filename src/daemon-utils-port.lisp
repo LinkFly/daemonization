@@ -13,7 +13,8 @@
 	   #:admin-current-user-p
 	   #:safe-write
 	   #:get-username
-	   #:get-groupname))	   
+	   #:get-groupname
+	   #:safe-write))	   
 
 (in-package :daemon-utils-port)
 

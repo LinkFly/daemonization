@@ -62,4 +62,4 @@
    :daemon-sbcl-sys-linux-port
    #-sbcl 
    #.(error "Not implemented for non sbcl lisp systems")
-   (daemon-interfaces:get-unix-functions)))
+   (get-unix-functions)))

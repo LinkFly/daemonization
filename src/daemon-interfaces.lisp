@@ -75,12 +75,6 @@
 	(prctl option arg)
 	#+daemon.listen-privileged-ports
 	+pr_set_keepcaps+ 
-	#+daemon.listen-privileged-ports
-	(cap-from-text text)
-	#+daemon.listen-privileged-ports
-	(cap-set-proc cap_p)
-	#+daemon.listen-privileged-ports
-	(cap-free cap_p)      		
 	))
 
   (defun get-unix-functions ()

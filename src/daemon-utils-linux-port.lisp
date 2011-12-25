@@ -6,6 +6,8 @@
 		#:enable-interrupt #:get-args
 		#:stat #:stat-uid #:passwd-name #:getpwuid
 		#:safe-write)
+  (:import-from :daemon-share-port 
+		#:*cap-from-text* #:*cap-set-proc* #:*cap-free*)
   #-sbcl 
   #.(error "Not implemented for non sbcl lisp systems")
   (:export #:set-current-dir #:set-umask
@@ -21,7 +23,8 @@
 	   #:admin-user-p
 	   #:equal-users
 	   #:equal-groups
-	   #:safe-write))   
+	   #:safe-write))
+	   
 
 (in-package :daemon-utils-linux-port)
 
@@ -146,11 +149,13 @@
 (progn 
   (defun-ext preparation-before-grant-listen-privileged-ports ()
     (prctl +PR_SET_KEEPCAPS+ 1))
-
+  
   (defun-ext set-grant-listen-privileged-ports ()
-    (let ((cap_p (cap-from-text "CAP_NET_BIND_SERVICE=ep")))      
-      (cap-set-proc cap_p)
-      (cap-free cap_p)))
+    (eval-when (:compile-toplevel :load-toplevel)
+      (handler-bind ((style-warning #'muffle-warning))
+	(let ((cap_p (funcall *cap-from-text* "CAP_NET_BIND_SERVICE=ep")))      
+	  (funcall *cap-set-proc* cap_p)
+	  (funcall *cap-free* cap_p)))))
 
   ) ;feature :daemon.listen-privileged-ports
 

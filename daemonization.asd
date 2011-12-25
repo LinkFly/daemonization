@@ -16,8 +16,11 @@
 				     (:file "daemon-logging")				     
 				     (:file "daemon-share" :depends-on ("daemon-features" "daemon-logging"))
 				     (:file "daemon-interfaces" :depends-on ("daemon-share"))
+				     
+				     (:file "daemon-share-port" :depends-on ("daemon-share"))
 				     #+(and linux sbcl) 
-				     (:file "daemon-sbcl-sys-linux-port" :depends-on ("daemon-share"))
+				     (:file "daemon-sbcl-sys-linux-port" :depends-on ("daemon-share" "daemon-share-port"))
+				     
 				     #+linux 
 				     (:file "daemon-unix-api-port" :depends-on ("daemon-share" "daemon-interfaces" 
 											    #+sbcl
@@ -49,6 +52,11 @@
 									     #+linux "daemon-core-linux-port"
 									     #-linux (error "Not implemented on none Linux")
 									     ))
-				     (:file "daemon-init" :depends-on ("daemon-core-port"))
+				     (:file "daemon-logging-init" :depends-on ("daemon-share" "daemon-logging" "daemon-utils-port" "daemon-core-port"))
+
+				     (:file "daemon-init" :depends-on ("daemon-logging-init" "daemon-core-port"))
+				     #+linux
+				     (:file "daemon-load-foreign-linux-port" :depends-on ("daemon-logging-init" "daemon-init" 
+											  "daemon-share" "daemon-share-port"))
 				     (:file "daemonization" :depends-on ("daemon-share" "daemon-init" "daemon-core-port" "daemon-utils-port"))
 				     (:file "daemonization-utils" :depends-on ("daemon-share" "daemon-init" "daemon-core-port" "daemon-utils-port"))))))
