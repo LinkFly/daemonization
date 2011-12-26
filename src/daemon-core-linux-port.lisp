@@ -31,9 +31,24 @@
 ;(f 3 4 :z 6)
 ;;;;;;;;;;;;;;;;;;;
 
+(defparameter *fn-clean-for-syslog* 
+  #'(lambda (str)
+      (loop 
+	 :with was-space
+	 :for ch :across str	
+	 :if (and (char/= ch   #\Newline #\Tab) 
+		  (not (and was-space (char= ch #\Space))))
+	 :collect ch :into result	;:and :do (break "~S" ch)
+
+	 :if (char= ch #\Space) :do (setf was-space t) :else :do (setf was-space nil)
+	 :finally (return (coerce result 'string)))))
+
 (defun syslog-info (fmt-str &rest args)
   (let ((*print-call* nil))
-    (apply 'syslog log-info-constant fmt-str args)))
+    (if *syslog-cleaning-p*
+	(syslog log-info-constant (funcall *fn-clean-for-syslog* 
+					   (apply #'format nil fmt-str args)))
+	(apply 'syslog log-info-constant fmt-str args))))
 
 (defun syslog-err (fmt-str &rest args)
   (let ((*print-call* nil))

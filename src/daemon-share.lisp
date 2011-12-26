@@ -34,6 +34,7 @@
 	   #:*disabled-functions-logging*
 	   #:*disabled-layers-logging*
 	   #:*fn-log-info-load*
+	   #:*syslog-cleaning-p*
 	   #:*log-line-number*
 	   #:*print-log-line-number*
 	   #:*fn-correct-log-plist*
@@ -111,6 +112,7 @@
 (define-constant +system-name+ :daemonization)
 
 (defparameter *fn-log-info-load* *fn-log-info* "Function for logging at load time")
+(defparameter *syslog-cleaning-p* t)
 (defparameter *pid-files-dirname* "pid-files" "Default directory for saving pid-files")
 (defparameter *conf-files-dirname* "conf-files" "Default directory for config files")
 (defparameter *default-conf-file-name* "default.conf" "From this file do reading all are not setting parameters")
@@ -167,8 +169,8 @@ Return value must be status value or list contained status value and value type 
 				     :before-parent-exit-fn :exit :os-params :parent-conf-file :parent-conf-file-dir
 				     :listen-privileged-ports))
 (define-constant +result-keys+ '(:result :command :status :reason :pid :pid-file :internal-result)) 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;		
 (defmacro with-keys (keys plist &body body)
   (let ((pls (gensym "PLIST-")))
     `(let ((,pls ,plist))
