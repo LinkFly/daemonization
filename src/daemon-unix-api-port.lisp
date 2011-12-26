@@ -63,3 +63,5 @@
    #-sbcl 
    #.(error "Not implemented for non sbcl lisp systems")
    (get-unix-functions)))
+
+(define-unix-functions)

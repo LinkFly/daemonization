@@ -26,17 +26,18 @@
 
       (when (typep file-stream-system '(or string pathname))
 	(setf file-stream-system (get-real-file file-stream-system
-						(get-file-dir 'logger-admin-files-dir 'logger-files-dir))))
-      
+						(get-file-dir 'logger-admin-files-dir 'logger-files-dir))))      
       (typecase file-stream-system
 	((eql :system) (apply fn-system-log fmt-str args))
-	((or pathname string stream) 
+	((or pathname string stream) 	 
 	 (apply #'safe-write file-stream-system fmt-str args)
 	 (force-output))))))
 
-(defun logging-init ()
-  (setf *logger* (plist-to-logger (with-open-file (stream (get-logging-conf-file))
-				    (read stream)))
+(defun logging-init ()  
+  (setf *logger* (if *logger* 
+		     *logger*
+		     (plist-to-logger (with-open-file (stream (get-logging-conf-file))
+					(read stream))))
 	*fn-log-info* #'(lambda (fmt-str &rest args)
 			  (add-daemon-log (apply #'format nil fmt-str args))
 			  (apply (gen-fn-log :info #'syslog-info) fmt-str args))
@@ -66,4 +67,5 @@
 	*fn-get-groupname* (lambda () (let ((*print-call* nil)) (get-groupname)))))
 
 (logging-init)
+
   

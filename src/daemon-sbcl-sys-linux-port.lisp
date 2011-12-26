@@ -5,6 +5,8 @@
 	:sb-alien
         :sb-unix)  
 
+  (:import-from :sb-sys #:fd-stream-fd)
+
   (:import-from :sb-posix
 		#:getpwnam #:getgrnam #:group-gid #:passwd-gid #:passwd-uid
 		#:setresgid #:setresuid 					
@@ -15,11 +17,12 @@
 
   (:shadowing-import-from :sb-posix
 			  #:sigusr1 #:sigchld #:sigkill
-			  #:O-RDWR #:O-RDONLY #:O-WRONLY #:O-CREAT #:O-TRUNC 
+			  #:O-RDWR #:O-RDONLY #:O-WRONLY #:O-CREAT #:O-TRUNC #:O-APPEND
 			  #:s-iread #:s-iwrite #:S-iroth
 			  #:ioctl #:close #:syslog #:log-err #:log-info
 			  #:stat #:stat-uid #:passwd-name #:getpwuid
-			  #:lockf #:f-tlock #:eagain #:syscall-errno)
+			  #:lockf #:f-tlock #:eagain #:eacces #:syscall-error #:syscall-errno)
+  
   ;;fork and open defined follow with using sb-posix:fork and sb-posix:open
   (:shadow #:open #:fork)
 
@@ -88,7 +91,7 @@
 ;; Define initgroups
 #+daemon.change-user-and-group
 (def-alien-call "initgroups" int minusp (user c-string) (group sb-posix::gid-t))
-     
+
 ;; Define constant +PR_SET_KEEPCAPS+ (already defined in begin), function prctl.
 
 #+daemon.listen-privileged-ports 
@@ -150,24 +153,23 @@
   (setf stream
 	(if (streamp pathname-or-stream)
 	    pathname-or-stream
-	    (cl:open pathname-or-stream :direction :output :if-does-not-exist :create :if-exists :append)))
+	    (cl:open pathname-or-stream :direction :output :if-does-not-exist :create :if-exists :append)))					
   (unwind-protect 
        (loop
 	  until (block try-lock
 		  (handler-bind ((error (lambda (condition)
-					  (if (or (= eagain 
-						     (syscall-errno condition))
-						  (= sb-posix:eacces
-						     (syscall-errno condition)))
-					      (return-from try-lock)
-					      (error condition)))))
-		    (lockf stream sb-posix:f-tlock 0)
+					  (when (and (eq (type-of condition) 'syscall-error)
+						     (or (= eagain 
+							    (syscall-errno condition))
+							 (= eacces
+							    (syscall-errno condition))))
+					    (return-from try-lock))
+					  (error condition))))
+		    (lockf (fd-stream-fd stream) f-tlock 0)
 		    (apply #'format stream fmt-str args)
-		    (close stream)))
+		    (cl:close stream)))
 	        
 	  do (sleep *safe-write-sleep*))
-    (close stream)))
+    (cl:close stream)))
 
-
-    
 

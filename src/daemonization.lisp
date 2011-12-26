@@ -4,7 +4,7 @@
 (defpackage :daemonization 
   (:use :cl :daemon-share :daemon-core-port) ;:sb-introspect :sb-debug)
   (:import-from :daemon-utils-port #:exit #:getpid)
-  (:export #:daemonized #:get-daemon-log-list #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace*
+  (:export #:daemonized #:get-daemon-log-list #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* #:*fn-log-info-load*
 	   #:+all-daemon-commands+ #:+conf-parameters+
 	   ;; for reading extra-status
 	   #:extra-status

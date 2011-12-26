@@ -85,20 +85,8 @@
   (when (probe-file pathname)    
     (delete-file pathname)))
 
-(defun ensure-no-syslog-file ()
-  (ensure-no-file (get-syslog-file)))
-
 (defun ensure-no-pid-file ()
   (ensure-no-file (get-pid-file)))
-
-(defun recreate-root-syslog-file ()
-  (let ((*test-mode* :root)) 
-    (recreate-file-allow-write-other (get-syslog-file))))
-
-(defun print-syslog (fmt-str &rest args)
-  (with-open-file (syslog-stream (get-syslog-file)
-				 :direction :output :if-does-not-exist :create :if-exists :append)
-    (apply #'format syslog-stream fmt-str args)))
 
 (defun read-conf-params (file)
   (with-open-file (stream file)
@@ -127,15 +115,7 @@
 				      :direction :output
 				      :if-does-not-exist :create
 				      :if-exists :supersede))
-	   (*standard-output* (make-broadcast-stream prompts-file-stream *standard-output*))
-	   (fn-wrapped-print-syslog (let ((test-mode-val *test-mode*))
-				      #'(lambda (fmt-str &rest args) 
-					  (let ((*test-mode* test-mode-val))
-					    (apply #'print-syslog fmt-str args)))))
-	   (*fn-log-info* fn-wrapped-print-syslog)
-	   (*fn-log-err* fn-wrapped-print-syslog)
-	   (*fn-log-trace* fn-wrapped-print-syslog))
-      (ensure-no-syslog-file)
+	   (*standard-output* (make-broadcast-stream prompts-file-stream *standard-output*)))
       (princ "Tests daemonized ... ")
       (terpri)
       (unwind-protect 
@@ -176,16 +156,7 @@
 				      :direction :output
 				      :if-does-not-exist :create
 				      :if-exists :supersede))
-	   (*standard-output* (make-broadcast-stream prompts-file-stream *standard-output*))
-	   (fn-wrapped-print-syslog (let ((test-mode-val *test-mode*))
-				      #'(lambda (fmt-str &rest args) 
-					  (let ((*test-mode* test-mode-val))
-					    (apply #'print-syslog fmt-str args)))))
-	   (*fn-log-info* fn-wrapped-print-syslog)
-	   (*fn-log-err* fn-wrapped-print-syslog)
-	   (*fn-log-trace* fn-wrapped-print-syslog))
-      (ensure-no-syslog-file)
-      (recreate-root-syslog-file)    
+	   (*standard-output* (make-broadcast-stream prompts-file-stream *standard-output*)))
       (princ "Tests daemonized (with is changing of user) ... ")
       (terpri)
       (unwind-protect
@@ -199,7 +170,7 @@
 	       (if (and 
 		    (progn (format t "~%try test handling of the configuration ... ") (if (test-config-handling) 
 											     (progn (format t "OK~%") t)
-											     (format t "FAIL~%")))		    
+											     (format t "FAIL~%")))
 		    (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))
 		    (progn (format t "~%try stop ...~%") (daemon-cmd "stop") (not (eql daemon-share:+ex-ok+ (daemon-status))))
 		    (progn (format t "~%try start ...~%") (daemon-cmd "start") (return-if-child) (eql daemon-share:+ex-ok+ (daemon-status)))

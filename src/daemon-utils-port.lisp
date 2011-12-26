@@ -14,7 +14,7 @@
 	   #:safe-write
 	   #:get-username
 	   #:get-groupname
-	   #:safe-write))	   
+	   #:safe-write))
 
 (in-package :daemon-utils-port)
 
