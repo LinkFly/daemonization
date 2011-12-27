@@ -24,7 +24,7 @@
 	   ;;; Logging
 	   #:*logger*
 	   #:log-info #:log-err #:defun-ext #:wrap-log
-	   #:*print-log-info* #:*print-log-err*
+	   #:*print-log-info* #:*print-log-info-load* #:*print-log-err*
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
 	   #:*print-call* #:*print-called-form-with-result*
 	   #:*print-pid*
@@ -112,6 +112,7 @@
 
 (define-constant +system-name+ :daemonization)
 
+(defparameter *print-log-info-load* t)
 (defparameter *fn-log-info-load* *fn-log-info* "Function for logging at load time")
 (defparameter *syslog-cleaning-p* t "Removing from output to syslog string #012 and spaces")
 (defparameter *stopping-max-secs* 60 "Maximum time for tries normal stopping daemons")
@@ -326,9 +327,10 @@ form."
 
 ;;;;;;;;;; logging ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmacro log-info-load (log-str &rest args) 
-  `(let ((*fn-log-info* *fn-log-info-load*))
-     (log-info ,log-str ,@args)
-     ))
+  `(when *print-log-info-load*
+     (let ((*fn-log-info* *fn-log-info-load*))
+       (log-info ,log-str ,@args)
+       )))
 
 ;;;;;;;;;; Conditions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define-condition file-exists-error () 
