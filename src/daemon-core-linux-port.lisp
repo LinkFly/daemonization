@@ -113,8 +113,15 @@
 	    (cur-exit +process-not-exists+ extra-status))
 	  (kill pid sigusr1)
 	  (loop
-	     while (ignore-errors (kill pid 0))
-	     do (sleep 0.1))
+	     :with cur-time = (get-universal-time)
+	     :if (> (- (get-universal-time) cur-time)
+		    *stopping-max-secs*)
+	       :do (progn 
+		     (log-err "Daemon with pid = ~A normal not stopping (timeout = ~A secs). Killing ..." pid *stopping-max-secs*)
+		     (kill pid 9)
+		     (setf cur-time (get-universal-time)))
+	     :while (ignore-errors (kill pid 0))
+	     :do (sleep 0.1))
 	  (delete-file pid-file)
 	  (cur-exit +ex-ok+ extra-status))))
 

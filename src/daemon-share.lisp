@@ -35,6 +35,7 @@
 	   #:*disabled-layers-logging*
 	   #:*fn-log-info-load*
 	   #:*syslog-cleaning-p*
+	   #:*stopping-max-secs*
 	   #:*log-line-number*
 	   #:*print-log-line-number*
 	   #:*fn-correct-log-plist*
@@ -112,7 +113,8 @@
 (define-constant +system-name+ :daemonization)
 
 (defparameter *fn-log-info-load* *fn-log-info* "Function for logging at load time")
-(defparameter *syslog-cleaning-p* t)
+(defparameter *syslog-cleaning-p* t "Removing from output to syslog string #012 and spaces")
+(defparameter *stopping-max-secs* 60 "Maximum time for tries normal stopping daemons")
 (defparameter *pid-files-dirname* "pid-files" "Default directory for saving pid-files")
 (defparameter *conf-files-dirname* "conf-files" "Default directory for config files")
 (defparameter *default-conf-file-name* "default.conf" "From this file do reading all are not setting parameters")
