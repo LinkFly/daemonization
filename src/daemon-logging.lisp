@@ -207,19 +207,19 @@
   (let ((*print-pretty* nil)) 
     (apply fn-log (funcall #'wrap-fmt-str format-str :indent (get-indent)) (slashing-str-args args))))
 
-(defmacro log-info (format-str &rest args)
-  `(let ((fn-log (get-fn-log-info)))
-     (when (and fn-log *print-log-info*)
+
+(defmacro log-share ((format-str &rest args) getter-fn-log var-control log-mode)
+  `(let ((fn-log (,getter-fn-log)))
+     (when (and fn-log ,var-control)
        (let ((*def-in-package* (load-time-value *package*))
-	     (*log-mode* :info))
+	     (*log-mode* ,log-mode))
 	 (logging fn-log ,format-str ,@args)))))
 
+(defmacro log-info (format-str &rest args)
+  `(log-share (,format-str ,@args) get-fn-log-info *print-log-info* :info))
+
 (defmacro log-err (format-str &rest args)
-  `(let ((fn-log (get-fn-log-err)))
-     (when (and fn-log *print-log-err*)
-       (let ((*def-in-package* (load-time-value *package*))
-	     (*log-mode* :error))   
-	 (logging fn-log ,format-str ,@args)))))
+  `(log-share (,format-str ,@args) get-fn-log-err *print-log-err* :error))
 
 (defun syslog-trace (form-str &key extra-form-str trace-type)
   (declare (type (member :call :result) trace-type)
