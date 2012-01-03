@@ -21,13 +21,11 @@
 	   #:*fn-get-username* #:*fn-get-groupname*
 	   #:base-logger
 	   
-	   #:*log-mode*
 	   #:create-log-plist
 	   #:get-log-layer
+	   #:*log-mode*
 	   #:*trace-fn*
-	   #:is-property-p
-	   #:*trace-type*
-	   #:get-datetime))
+	   #:*trace-type*))
 
 (in-package :daemon-logging)
 
@@ -140,14 +138,8 @@
 (defstruct base-logger 
   )
 
-(defun get-datetime ()
-  (multiple-value-bind (sec min hour date month year)
-      (get-decoded-time)
-    (format nil "~D.~2,'0D.~2,'0D ~2,'0D:~2,'0D:~2,'0D" year month date hour min sec)))
-
-(defun is-property-p (prop plist)
-  (loop for (key . rest) on plist by #'cddr
-     when (eq prop key) do (return t)))
+;(declaim (type (or null base-logger) *logger*))
+;(defparameter *logger* nil "Contains logger object with the parameters for logging operations")
 
 (defmacro create-log-plist (&rest details)
   (cons 'append 

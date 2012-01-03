@@ -33,6 +33,15 @@
 	 (apply #'safe-write file-stream-system fmt-str args)
 	 (force-output))))))
 
+(defun is-property-p (prop plist)
+  (loop for (key . rest) on plist by #'cddr
+     when (eq prop key) do (return t)))
+
+(defun get-datetime ()
+  (multiple-value-bind (sec min hour date month year)
+      (get-decoded-time)
+    (format nil "~D.~2,'0D.~2,'0D ~2,'0D:~2,'0D:~2,'0D" year month date hour min sec)))
+
 (defun logging-init ()  
   (setf *logger* (if *logger* 
 		     *logger*
