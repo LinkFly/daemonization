@@ -125,7 +125,7 @@
 (defparameter *main-function-symbol* nil "Setting in :daemonization package. Needed for correct reset
 :line property (in log-plist) in function call *fn-correct-log-plist*")
 
-(defstruct logger
+(defstruct (logger (:include base-logger))
   (files-dir "logs" :type string)
   (admin-files-dir "logs" :type string)
   (info-destination :system :type (or string pathname (eql :system)))
