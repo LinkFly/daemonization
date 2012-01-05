@@ -23,11 +23,13 @@
 
 	   ;;; Logging
 	   #:*logger*
+	   #:with-tmp-logger
+	   #:print-call-p #:print-pid-p
 	   #:log-info #:log-err #:defun-ext #:wrap-log
 	   #:*print-log-info* #:*print-log-info-load* #:*print-log-err*
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
-	   #:*print-call* #:*print-called-form-with-result*
-	   #:print-pid-p
+	   #:*print-called-form-with-result*
+	   
 	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
 	   #:*print-log-datetime*
@@ -138,7 +140,7 @@
 
   fn-get-pid 
   fn-get-username
-  fn-getgroupname
+  fn-get-groupname
 
   (print-pid-p t)
   (print-username-p t)

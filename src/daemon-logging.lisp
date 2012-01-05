@@ -3,10 +3,8 @@
   (:export #:log-info #:log-err #:defun-ext #:wrap-log
 	   #:*print-log-info* #:*print-log-err*
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
-	   #:*print-call* #:*print-called-form-with-result*
-	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* 
-	   #:fn-create-log-plist #:fn-correct-log-plist
-	   #:fn-wrapped-begin-fmt-str #:fn-print-pair 
+	   #:*print-called-form-with-result*
+	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* 	   
 	   #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
 	   #:*print-log-datetime* 
@@ -15,7 +13,6 @@
 	   #:*process-type*
 	   #:*log-line-number*
 	   #:*print-log-line-number*
-	   #:base-logger
 	   
 	   #:create-log-plist
 	   #:get-log-layer
@@ -23,7 +20,14 @@
 	   #:*trace-fn*
 	   #:*trace-type*
 
-	   #:*logger*))
+	   #:base-logger
+	   #:*logger*
+	   #:fn-create-log-plist #:fn-correct-log-plist
+	   #:fn-wrapped-begin-fmt-str #:fn-print-pair 
+	   #:print-call-p
+
+	   ;;Utils
+	   #:with-tmp-logger))
 
 (in-package :daemon-logging)
 
@@ -37,7 +41,6 @@
 (defparameter *print-log-err* t)
 (defparameter *print-log-layer* t)
 (defparameter *print-internal-call* t)
-(defparameter *print-call* t)
 (defparameter *print-called-form-with-result* t)
 (defparameter *disabled-functions-logging* nil)
 (defparameter *disabled-layers-logging* nil)
@@ -128,11 +131,36 @@
   (fn-wrapped-begin-fmt-str nil)
   (fn-print-pair (lambda (pair)
 		   (format nil " ~S ~S" (first pair) (second pair))))
+  (print-call-p t)
   
   )
 
 (declaim (type (or null base-logger) *logger*))
 (defparameter *logger* (make-base-logger) "Contains logger object with the parameters for controlling logging operations")
+
+;;;;; Utils ;;;;;;;;;;;;;;
+(defmacro with-tmp-slots (slots-newvals obj &body body 
+			  &aux slots s-slots s-oldvals s-obj)
+  (setf slots (mapcar #'first slots-newvals)
+	s-slots (gentemp "SLOTS-")
+	s-oldvals (gentemp "OLDVALS-")
+	s-obj (gentemp "OBJ-"))
+  `(let ((,s-obj ,obj))
+     (with-slots ,slots ,s-obj
+     (let ((,s-oldvals (list ,@slots))
+	   (,s-slots ',slots))
+       (prog2
+	   (progn ,@(mapcar #'(lambda (x) (cons 'setf x))
+			    slots-newvals))
+	   (progn ,@body)
+	 (loop 
+	    :for slot :in ,s-slots
+	    :for oldval :in ,s-oldvals
+	    :do (setf (slot-value ,s-obj slot) oldval)))))))
+
+(defmacro with-tmp-logger (slots-newvals &body body)
+  `(with-tmp-slots ,slots-newvals *logger*
+     ,@body))
 
 (defmacro create-log-plist (&rest details)
   (cons 'append 
@@ -367,12 +395,14 @@
 							     (list 'quote arg)
 							     arg))
 						     (list ,@(present-args args)))))))
-	 (when (and *print-call* (is-logging-p ,this-name *def-in-package*))
+	 (when (and (slot-value *logger* 'print-call-p) 
+		    (is-logging-p ,this-name *def-in-package*))
 	   (syslog-call-into ,form-str))
 
 	 (let ((,res (multiple-value-list 
 		      (locally ,@(remove-declare-ignore body)))))	   
-	   (when (and *print-call* (is-logging-p ,this-name *def-in-package*))
+	   (when (and (slot-value *logger* 'print-call-p)
+		      (is-logging-p ,this-name *def-in-package*))
 	     (apply #'syslog-call-out (apply #'present-form ,res) (when *print-called-form-with-result* (list ,form-str))))
 	   (apply #'values ,res))))))
 

@@ -8,7 +8,7 @@
 	   (type function fn-system-log))
   (lambda (fmt-str &rest args &aux
 	   file-stream-system
-	   (is-admin (let ((*print-call* nil)) (admin-current-user-p)))
+	   (is-admin (with-tmp-logger ((print-call-p nil)) (admin-current-user-p)))
 	   (logger *logger*))
     (flet ((get-file-stream-system (getters-plist)
 	     (funcall (funcall (if is-admin #'first #'second)
@@ -43,10 +43,8 @@
     (format nil "~D.~2,'0D.~2,'0D ~2,'0D:~2,'0D:~2,'0D" year month date hour min sec)))
 
 (defun logging-init ()    
-  (setf *logger* (if *logger* 
-		     *logger*
-		     (plist-to-logger (with-open-file (stream (get-logging-conf-file))
-					(read stream)))))
+  (setf *logger* (plist-to-logger (with-open-file (stream (get-logging-conf-file))
+				    (read stream))))
   (with-slots (fn-create-log-plist 
 	       fn-correct-log-plist
 	       fn-wrapped-begin-fmt-str
@@ -54,11 +52,13 @@
 	       
 	       fn-get-pid
 	       fn-get-username
-	       fn-getgroupname
+	       fn-get-groupname
 
 	       print-pid-p
 	       print-username-p
-	       print-groupname-p)
+	       print-groupname-p
+
+	       print-call-p)
       *logger*
     (setf 
      *fn-log-info* #'(lambda (fmt-str &rest args)
@@ -70,20 +70,20 @@
 		      (apply (gen-fn-log :error #'syslog-err) (concatenate 'string "ERROR: " fmt-str) args))
      *fn-log-trace* #'(lambda (fmt-str)
 			(apply (gen-fn-log :trace #'syslog-info) "~A" (add-daemon-log fmt-str) nil))
-     fn-get-pid #'(lambda () (let ((*print-call* nil)) (getpid)))
-     fn-get-username (lambda () (let ((*print-call* nil)) (get-username)))
-     fn-get-groupname (lambda () (let ((*print-call* nil)) (get-groupname)))
+     fn-get-pid #'(lambda () (with-tmp-logger ((print-call-p nil)) (getpid)))
+     fn-get-username (lambda () (with-tmp-logger ((print-call-p nil)) (get-username)))
+     fn-get-groupname (lambda () (with-tmp-logger ((print-call-p nil)) (get-groupname)))
      fn-create-log-plist (lambda (fmt-str &key extra-fmt-str (indent ""))
 			   (declare (ignore indent))
 			   (create-log-plist 
 			    (:daemonization *log-mode*)
 			    (:line *log-line-number* *print-log-line-number*)
 			    (:message fmt-str (member *log-mode* '(:info :error)))
-			    (:call fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :call) *print-call*))
-			    (:result fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :result) *print-call*))
+			    (:call fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :call) print-call-p))
+			    (:result fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :result) print-call-p))
 			    (:called-form extra-fmt-str (and (eq *log-mode* :trace)
 							     (eq *trace-type* :result)
-							     *print-call*
+							     print-call-p
 							     *print-called-form-with-result*))
 			    (:datetime (get-datetime) *print-log-datetime*)
 			    (:pid (funcall fn-get-pid) print-pid-p)

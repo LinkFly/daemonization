@@ -1,13 +1,13 @@
 (defpackage :daemonization-utils
   (:use :cl)
-  (:import-from :daemon-share #:*print-call*)
+  (:import-from :daemon-share #:print-call-p #:with-tmp-logger)
   (:import-from :daemon-utils-port #:get-args #:getpid #:recreate-file-allow-write-other)
   (:export #:get-args #:get-proc-id #:recreate-file-allow-write-other))
 
 (in-package :daemonization-utils)
 
 (defun get-proc-id ()
-  (let ((*print-call* nil)) (getpid)))
+  (with-tmp-logger ((print-call-p nil)) (getpid)))
 
 #| 
 daemoniation.lisp:

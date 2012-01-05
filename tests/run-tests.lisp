@@ -9,7 +9,7 @@
 (eval-when (:execute) 
   (handler-case
       (with-output-to-string (*trace-output*)
-	(with-output-to-string (*standard-output*)
+	(with-output-to-string (*standard-output*) 
 	  (asdf:load-system :daemonization-test)))
     (error (c) 
       (format t "ERROR: Load system :daemonization-test failed. ~A~%" c)

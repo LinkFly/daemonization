@@ -44,14 +44,14 @@
 	 :finally (return (coerce result 'string)))))
 
 (defun syslog-info (fmt-str &rest args)
-  (let ((*print-call* nil))
+  (with-tmp-logger ((print-call-p nil))
     (if *syslog-cleaning-p*
 	(syslog log-info-constant (funcall *fn-clean-for-syslog* 
 					   (apply #'format nil fmt-str args)))
 	(apply 'syslog log-info-constant fmt-str args))))
 
 (defun syslog-err (fmt-str &rest args)
-  (let ((*print-call* nil))
+  (with-tmp-logger ((print-call-p nil))
     (apply 'syslog log-err-constant fmt-str args)))
 
 #+daemon.as-daemon

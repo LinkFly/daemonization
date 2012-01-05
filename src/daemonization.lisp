@@ -139,9 +139,9 @@
 
 (defun-ext probe-conf-params (conf-params)   
   (let ((*fn-log-info* nil)
-	(*fn-log-err* nil)
-	(*print-call* nil))
-    (correct-and-check-conf-params conf-params #'check-conf-params)))
+	(*fn-log-err* nil))
+    (with-tmp-logger ((print-call-p nil))
+      (correct-and-check-conf-params conf-params #'check-conf-params))))
 
 (defun-ext check-and-correct-pid-file-param (conf-params daemon-command)
   (let ((pid-file (getf conf-params :pid-file))

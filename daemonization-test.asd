@@ -18,11 +18,17 @@
 (defparameter *test-mode* nil)
 
 (defun get-test-mode ()
-  (progv (list (find-symbol "*PRINT-CALL*" :daemon-share))
-      '(nil)
-    (if (funcall (find-symbol "ADMIN-CURRENT-USER-P" :daemon-utils-port))
-	:root
-	:user)))
+  (symbol-macrolet ((print-call-p (slot-value (symbol-value (find-symbol "*LOGGER*" :daemon-share))
+					      (find-symbol "PRINT-CALL-P" :daemon-share))))
+    (let* ((old-val print-call-p)
+	   result)
+      (setf print-call-p nil
+	    result (if (funcall (find-symbol "ADMIN-CURRENT-USER-P"
+					     :daemon-utils-port))
+		       :root
+		       :user)
+	    print-call-p old-val)
+      result)))
 
 (defun get-system-path ()
   (asdf:component-pathname (asdf:find-system +system-name+)))
