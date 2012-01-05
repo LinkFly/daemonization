@@ -4,11 +4,9 @@
 	   #:*print-log-info* #:*print-log-err*
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
 	   #:*print-call* #:*print-called-form-with-result*
-	   #:*print-pid*
 	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* 
-	   #:*fn-log-pid* 
-	   #:*fn-create-log-plist* #:*fn-correct-log-plist*
-	   #:*fn-wrapped-begin-fmt-str* #:*fn-print-pair* 
+	   #:fn-create-log-plist #:fn-correct-log-plist
+	   #:fn-wrapped-begin-fmt-str #:fn-print-pair 
 	   #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
 	   #:*print-log-datetime* 
@@ -17,15 +15,15 @@
 	   #:*process-type*
 	   #:*log-line-number*
 	   #:*print-log-line-number*
-	   #:*print-username* #:*print-groupname*
-	   #:*fn-get-username* #:*fn-get-groupname*
 	   #:base-logger
 	   
 	   #:create-log-plist
 	   #:get-log-layer
 	   #:*log-mode*
 	   #:*trace-fn*
-	   #:*trace-type*))
+	   #:*trace-type*
+
+	   #:*logger*))
 
 (in-package :daemon-logging)
 
@@ -46,9 +44,7 @@
 (defparameter *log-prefix* nil)
 (defparameter *print-log-datetime* nil)
 (defparameter *print-trace-function* nil)
-(defparameter *print-pid* t)
-(defparameter *print-username* t)
-(defparameter *print-groupname* t)
+
 (defparameter *simple-log* nil)
 (defparameter *log-line-number* 0)
 (defparameter *print-log-line-number* t)
@@ -67,18 +63,7 @@
 				(apply #'format t fmt-str args)))
 (defparameter *fn-log-trace* #'(lambda (fmt-str)
 				(funcall #'princ fmt-str)))
-(defparameter *fn-log-pid* nil)
-(defparameter *fn-get-username* nil)
-(defparameter *fn-get-groupname* nil)
 
-(defparameter *fn-create-log-plist* (lambda (fmt-str &key extra-fmt-str (indent ""))
-				      (list :message (concatenate 'string indent fmt-str)
-					    :extra-message extra-fmt-str)))
-(defparameter *fn-correct-log-plist* #'identity)
-(defparameter *fn-wrapped-begin-fmt-str* nil)
-(defparameter *fn-print-pair* (lambda (pair)
-				(format nil " ~S ~S" (first pair) (second pair))))
-	 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;; Logging native parameter ;;;;;;;;;;
@@ -136,10 +121,18 @@
 ;;;;;;;;;;;;;;;;;
 
 (defstruct base-logger 
+  (fn-create-log-plist (lambda (fmt-str &key extra-fmt-str (indent ""))
+			 (list :message (concatenate 'string indent fmt-str)
+			       :extra-message extra-fmt-str)))
+  (fn-correct-log-plist #'identity)
+  (fn-wrapped-begin-fmt-str nil)
+  (fn-print-pair (lambda (pair)
+		   (format nil " ~S ~S" (first pair) (second pair))))
+  
   )
 
-;(declaim (type (or null base-logger) *logger*))
-;(defparameter *logger* nil "Contains logger object with the parameters for logging operations")
+(declaim (type (or null base-logger) *logger*))
+(defparameter *logger* (make-base-logger) "Contains logger object with the parameters for controlling logging operations")
 
 (defmacro create-log-plist (&rest details)
   (cons 'append 
@@ -151,24 +144,30 @@
 	   collect `(when ,(third detail) (list ,key ,message)))))
 	  
 (defun wrap-fmt-str (fmt-str &key extra-fmt-str (indent "") &aux log-plist)
-  (when *simple-log* 
-    (return-from wrap-fmt-str fmt-str))
-  (setq log-plist (funcall *fn-create-log-plist* fmt-str 
-			   :extra-fmt-str extra-fmt-str
-			   :indent indent))
-  (when *fn-correct-log-plist* (setf log-plist (funcall *fn-correct-log-plist* log-plist)))
-  (apply 'concatenate 
-	 (append (list 'string (string #\Newline) "(")
-		 (when *fn-wrapped-begin-fmt-str*
-		   (multiple-value-bind (begin-str log-pl) 
-		       (funcall *fn-wrapped-begin-fmt-str* log-plist indent)
-		     (prog1 (when begin-str (list begin-str))
-		       (when log-pl (setf log-plist log-pl)))))
-		 (loop
-		    :for pair :on log-plist :by #'cddr 
-		    :for log-cur-str = (funcall *fn-print-pair* (subseq pair 0 2))
-		    :if log-cur-str :collect (concatenate 'string " " log-cur-str))
-		 (list ")"))))
+  (with-slots (fn-create-log-plist 
+	       fn-correct-log-plist
+	       fn-wrapped-begin-fmt-str
+	       fn-print-pair)
+      *logger*
+    (when *simple-log* 
+      (return-from wrap-fmt-str fmt-str))
+    (setq log-plist (funcall fn-create-log-plist
+			     fmt-str 
+			     :extra-fmt-str extra-fmt-str
+			     :indent indent))
+    (when fn-correct-log-plist (setf log-plist (funcall fn-correct-log-plist log-plist)))
+    (apply 'concatenate 
+	   (append (list 'string (string #\Newline) "(")
+		   (when fn-wrapped-begin-fmt-str
+		     (multiple-value-bind (begin-str log-pl) 
+			 (funcall fn-wrapped-begin-fmt-str log-plist indent)
+		       (prog1 (when begin-str (list begin-str))
+			 (when log-pl (setf log-plist log-pl)))))
+		   (loop
+		      :for pair :on log-plist :by #'cddr 
+		      :for log-cur-str = (funcall fn-print-pair (subseq pair 0 2))
+		      :if log-cur-str :collect (concatenate 'string " " log-cur-str))
+		   (list ")")))))
 
 (defun slashing-str (str)
   (if (not (stringp str))

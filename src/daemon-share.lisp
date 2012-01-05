@@ -27,10 +27,10 @@
 	   #:*print-log-info* #:*print-log-info-load* #:*print-log-err*
 	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
 	   #:*print-call* #:*print-called-form-with-result*
-	   #:*print-pid*
+	   #:print-pid-p
 	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
-	   #:*print-log-datetime* #:*fn-log-pid*
+	   #:*print-log-datetime*
 	   #:*disabled-functions-logging*
 	   #:*disabled-layers-logging*
 	   #:*fn-log-info-load*
@@ -40,8 +40,8 @@
 	   #:*print-log-line-number*
 	   #:*fn-correct-log-plist*
 	   #:*main-function-symbol*
-	   #:*print-username* #:*print-groupname*
-	   #:*fn-get-username* #:*fn-get-groupname*
+	   #:print-username-p #:print-groupname-p
+	   #:fn-get-pid #:fn-get-username #:fn-get-groupname
 
 	   ;; for finding pid-files 
 	   #:*pid-files-dirname* #:get-pid-files-dir 
@@ -134,10 +134,17 @@
   (admin-info-destination :system :type (or string pathname (eql :system)))
   (admin-error-destination :system :type (or string pathname (eql :system)))
   (admin-trace-destination :system :type (or string pathname (eql :system)))
-  (count '(1 1)))
+  (count '(1 1))
 
-(declaim (type (or null logger) *logger*))
-(defparameter *logger* nil "Contains logger object with the parameters readed from *conf-log-file*")
+  fn-get-pid 
+  fn-get-username
+  fn-getgroupname
+
+  (print-pid-p t)
+  (print-username-p t)
+  (print-groupname-p t)
+  
+  )
 
 (defparameter *timeout-daemon-response* 5 "Second for waiting init daemon(child process 
 after fork). If daemon not response - calling timeout-forked-process-response-error")

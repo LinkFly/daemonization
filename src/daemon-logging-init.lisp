@@ -42,87 +42,101 @@
       (get-decoded-time)
     (format nil "~D.~2,'0D.~2,'0D ~2,'0D:~2,'0D:~2,'0D" year month date hour min sec)))
 
-(defun logging-init ()  
+(defun logging-init ()    
   (setf *logger* (if *logger* 
 		     *logger*
 		     (plist-to-logger (with-open-file (stream (get-logging-conf-file))
-					(read stream))))
-	*fn-log-info* #'(lambda (fmt-str &rest args)
-			  (add-daemon-log (apply #'format nil fmt-str args))
-			  (apply (gen-fn-log :info #'syslog-info) fmt-str args))
-	*fn-log-info-load* *fn-log-info*
-	*fn-log-err* #'(lambda (fmt-str &rest args)
-			 (add-daemon-log (concatenate 'string "ERROR: " (apply #'format nil fmt-str args)))
-			 (apply (gen-fn-log :error #'syslog-err) (concatenate 'string "ERROR: " fmt-str) args))
-	*fn-log-trace* #'(lambda (fmt-str)
-			   (apply (gen-fn-log :trace #'syslog-info) "~A" (add-daemon-log fmt-str) nil))
-	*fn-log-pid* #'(lambda () (let ((*print-call* nil)) (getpid)))
-	*fn-create-log-plist* (lambda (fmt-str &key extra-fmt-str (indent ""))
-				(declare (ignore indent))
-				(create-log-plist 
-				 (:daemonization *log-mode*)
-				 (:line *log-line-number* *print-log-line-number*)
-				 (:message fmt-str (member *log-mode* '(:info :error)))
-				 (:call fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :call) *print-call*))
-				 (:result fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :result) *print-call*))
-				 (:called-form extra-fmt-str (and (eq *log-mode* :trace)
-								  (eq *trace-type* :result)
-								  *print-call*
-								  *print-called-form-with-result*))
-				 (:datetime (get-datetime) *print-log-datetime*)
-				 (:pid (funcall *fn-log-pid*) *print-pid*)
-				 (:layer (get-log-layer) *print-log-layer*)
-				 (:trace-fn *trace-fn*)
-				 (:type-proc *process-type*)
-				 (:user-name (funcall *fn-get-username*) *print-username*)
-				 (:group-name (funcall *fn-get-groupname*) *print-groupname*)))
-	*fn-correct-log-plist* #'(lambda (log-plist)
-				   (when (getf log-plist :line)
-				     (labels ((is-log-trace? () 
-						(eq :trace (getf log-plist :daemonization)))
-					      (is-daemonized-result? ()
-						(and (is-log-trace?) 
-						     (getf log-plist :result)
-						     (eq *main-function-symbol* (getf log-plist :trace-fn)))))
-				       (symbol-macrolet ((count-ls (logger-count *logger*)))					 
-					 (setf (getf log-plist :line) (copy-list count-ls))
-					 (incf (second count-ls))
-					 (when (is-daemonized-result?)
-					   (setf (first count-ls) (incf (first count-ls)))
-					   (setf (second count-ls) 1))
-					 log-plist))))
-	*fn-wrapped-begin-fmt-str* (lambda (log-plist &optional (indent ""))	   
-				     (setf log-plist (copy-list log-plist))
-				     (let ((message (getf log-plist :message))
-					   (line-number (getf log-plist :line))
-					   (cur-main-key (loop for key in '(:message :call :result)
-							    if (is-property-p key log-plist) do (return key))))
-				       (values
-					(concatenate 'string 
-						     (prog1 (format nil "~S ~6S" (first log-plist) (second log-plist))
-						       (remf log-plist (first log-plist)))
-						     (concatenate 'string 
-								  (if (is-property-p :line log-plist)
-								      (format nil " ~S ~9A " :line line-number)
-								      " ")
-								  (format nil "~8S "cur-main-key)
-								  indent
-								  (let ((main-value (getf log-plist cur-main-key)))
-								    (cond 
-								      ((eq :message cur-main-key) 
-								       (concatenate 'string " \"" message "\""))
-								      ((member cur-main-key '(:call :result))
-								       main-value)))))
-					(loop :for key :in '(:line :message :call :result) 
-					   :do (remf log-plist key)
-					   :finally (return log-plist)))))
-	*fn-print-pair* (lambda (pair)
-			  (if (eq (first pair) :called-form)
-			      (format nil " ~S ~A" (first pair) (second pair))
-			      (format nil " ~S ~S" (first pair) (second pair))))
-	
-	*fn-get-username* (lambda () (let ((*print-call* nil)) (get-username)))
-	*fn-get-groupname* (lambda () (let ((*print-call* nil)) (get-groupname)))))
+					(read stream)))))
+  (with-slots (fn-create-log-plist 
+	       fn-correct-log-plist
+	       fn-wrapped-begin-fmt-str
+	       fn-print-pair
+	       
+	       fn-get-pid
+	       fn-get-username
+	       fn-getgroupname
+
+	       print-pid-p
+	       print-username-p
+	       print-groupname-p)
+      *logger*
+    (setf 
+     *fn-log-info* #'(lambda (fmt-str &rest args)
+		       (add-daemon-log (apply #'format nil fmt-str args))
+		       (apply (gen-fn-log :info #'syslog-info) fmt-str args))
+     *fn-log-info-load* *fn-log-info*
+     *fn-log-err* #'(lambda (fmt-str &rest args)
+		      (add-daemon-log (concatenate 'string "ERROR: " (apply #'format nil fmt-str args)))
+		      (apply (gen-fn-log :error #'syslog-err) (concatenate 'string "ERROR: " fmt-str) args))
+     *fn-log-trace* #'(lambda (fmt-str)
+			(apply (gen-fn-log :trace #'syslog-info) "~A" (add-daemon-log fmt-str) nil))
+     fn-get-pid #'(lambda () (let ((*print-call* nil)) (getpid)))
+     fn-get-username (lambda () (let ((*print-call* nil)) (get-username)))
+     fn-get-groupname (lambda () (let ((*print-call* nil)) (get-groupname)))
+     fn-create-log-plist (lambda (fmt-str &key extra-fmt-str (indent ""))
+			   (declare (ignore indent))
+			   (create-log-plist 
+			    (:daemonization *log-mode*)
+			    (:line *log-line-number* *print-log-line-number*)
+			    (:message fmt-str (member *log-mode* '(:info :error)))
+			    (:call fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :call) *print-call*))
+			    (:result fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :result) *print-call*))
+			    (:called-form extra-fmt-str (and (eq *log-mode* :trace)
+							     (eq *trace-type* :result)
+							     *print-call*
+							     *print-called-form-with-result*))
+			    (:datetime (get-datetime) *print-log-datetime*)
+			    (:pid (funcall fn-get-pid) print-pid-p)
+			    (:layer (get-log-layer) *print-log-layer*)
+			    (:trace-fn *trace-fn*)
+			    (:type-proc *process-type*)
+			    (:user-name (funcall fn-get-username) print-username-p)
+			    (:group-name (funcall fn-get-groupname) print-groupname-p)))
+     fn-correct-log-plist #'(lambda (log-plist)
+			      (when (getf log-plist :line)
+				(labels ((is-log-trace? () 
+					   (eq :trace (getf log-plist :daemonization)))
+					 (is-daemonized-result? ()
+					   (and (is-log-trace?) 
+						(getf log-plist :result)
+						(eq *main-function-symbol* (getf log-plist :trace-fn)))))
+				  (symbol-macrolet ((count-ls (logger-count *logger*)))					 
+				    (setf (getf log-plist :line) (copy-list count-ls))
+				    (incf (second count-ls))
+				    (when (is-daemonized-result?)
+				      (setf (first count-ls) (incf (first count-ls)))
+				      (setf (second count-ls) 1))
+				    log-plist))))
+     fn-wrapped-begin-fmt-str (lambda (log-plist &optional (indent ""))	   
+				(setf log-plist (copy-list log-plist))
+				(let ((message (getf log-plist :message))
+				      (line-number (getf log-plist :line))
+				      (cur-main-key (loop for key in '(:message :call :result)
+						       if (is-property-p key log-plist) do (return key))))
+				  (values
+				   (concatenate 'string 
+						(prog1 (format nil "~S ~6S" (first log-plist) (second log-plist))
+						  (remf log-plist (first log-plist)))
+						(concatenate 'string 
+							     (if (is-property-p :line log-plist)
+								 (format nil " ~S ~9A " :line line-number)
+								 " ")
+							     (format nil "~8S "cur-main-key)
+							     indent
+							     (let ((main-value (getf log-plist cur-main-key)))
+							       (cond 
+								 ((eq :message cur-main-key) 
+								  (concatenate 'string " \"" message "\""))
+								 ((member cur-main-key '(:call :result))
+								  main-value)))))
+				   (loop :for key :in '(:line :message :call :result) 
+				      :do (remf log-plist key)
+				      :finally (return log-plist)))))
+     fn-print-pair (lambda (pair)
+		     (if (eq (first pair) :called-form)
+			 (format nil " ~S ~A" (first pair) (second pair))
+			 (format nil " ~S ~S" (first pair) (second pair))))
+     )))
 
 (logging-init)
 

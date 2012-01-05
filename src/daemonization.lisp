@@ -30,7 +30,7 @@
 (in-package :daemonization)
 
 ;;;;; Initialization ;;;;;;;;;;
-;;; For correct reset :line property (in log-plist, in call *fn-correct-log-plist*)
+;;; For correct reset :line property (in log-plist, in call function in slot's fn-correct-log-plist of *logger*)
 (setf *main-function-symbol* 'daemonized)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -330,8 +330,8 @@
      if (find #\~ dir) do (return nil)
      finally (return t)))
 
-;;; Setted *main-function-symbol* in 'daemonization:daemonized for correct reset :line property (in log-plist, in call 
-;;;   *fn-correct-log-plist*). Look at the begin in Initialization.
+;;; Setted *main-function-symbol* in 'daemonization:daemonized for correct reset :line property (in log-plist, in function 
+;;;   slot's fn-correct-log-plist of *logger*). Look at the begin in Initialization.
 
 (declaim (ftype (function ((or pathname string null config-plist) string &key 
 			   (:on-error (member :return-error :as-ignore-errors :call-error :exit-from-lisp)) 
