@@ -1,8 +1,8 @@
 (defpackage :daemon-logging 
   (:use :cl)
   (:export #:log-info #:log-err #:defun-ext #:wrap-log
-	   #:*print-log-info* #:*print-log-err*
-	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
+	   #:print-log-info-p #:print-log-err-p
+	   #:*log-indent* #:*print-log-layer* #:print-internal-call-p
 	   #:*print-called-form-with-result*
 	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* 	   
 	   #:*log-prefix*
@@ -36,11 +36,7 @@
 (defparameter *log-indent* 0)
 (defparameter *log-indent-size* 2)
 
-(defparameter *print-log-info* t)
-
-(defparameter *print-log-err* t)
 (defparameter *print-log-layer* t)
-(defparameter *print-internal-call* t)
 (defparameter *print-called-form-with-result* t)
 (defparameter *disabled-functions-logging* nil)
 (defparameter *disabled-layers-logging* nil)
@@ -132,7 +128,9 @@
   (fn-print-pair (lambda (pair)
 		   (format nil " ~S ~S" (first pair) (second pair))))
   (print-call-p t)
-  
+  (print-internal-call-p t)
+  (print-log-info-p t)
+  (print-log-err-p t)
   )
 
 (declaim (type (or null base-logger) *logger*))
@@ -226,10 +224,10 @@
 	 (logging fn-log ,format-str ,@args)))))
 
 (defmacro log-info (format-str &rest args)
-  `(log-share (,format-str ,@args) get-fn-log-info *print-log-info* :info))
+  `(log-share (,format-str ,@args) get-fn-log-info (base-logger-print-log-info-p *logger*) :info))
 
 (defmacro log-err (format-str &rest args)
-  `(log-share (,format-str ,@args) get-fn-log-err *print-log-err* :error))
+  `(log-share (,format-str ,@args) get-fn-log-err (base-logger-print-log-err-p *logger*) :error))
 
 (defun syslog-trace (form-str &key extra-form-str trace-type)
   (declare (type (member :call :result) trace-type)
@@ -357,7 +355,7 @@
 
 (defmacro wrap-log-form (form)
   (with-gensyms (form-str res fn args)
-    `(if (not *print-internal-call*)
+    `(if (not (base-logger-print-internal-call-p *logger*))
 	 ,form
 	 (let* ((*def-in-package* (load-time-value *package*))
 		(*log-indent* *log-indent*)

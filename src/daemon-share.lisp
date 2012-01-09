@@ -26,8 +26,8 @@
 	   #:with-tmp-logger
 	   #:print-call-p #:print-pid-p
 	   #:log-info #:log-err #:defun-ext #:wrap-log
-	   #:*print-log-info* #:*print-log-info-load* #:*print-log-err*
-	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
+	   #:print-log-info-p #:print-log-info-load-p #:print-log-err-p
+	   #:*log-indent* #:*print-log-layer* #:print-internal-call-p
 	   #:*print-called-form-with-result*
 	   
 	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* #:*log-prefix*
@@ -114,7 +114,6 @@
 
 (define-constant +system-name+ :daemonization)
 
-(defparameter *print-log-info-load* t)
 (defparameter *fn-log-info-load* *fn-log-info* "Function for logging at load time")
 (defparameter *syslog-cleaning-p* t "Removing from output to syslog string #012 and spaces")
 (defparameter *stopping-max-secs* 60 "Maximum time for tries normal stopping daemons")
@@ -146,6 +145,7 @@
   (print-username-p t)
   (print-groupname-p t)
   
+  (print-log-info-load-p t)
   )
 
 (defparameter *timeout-daemon-response* 5 "Second for waiting init daemon(child process 
@@ -336,7 +336,7 @@ form."
 
 ;;;;;;;;;; logging ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmacro log-info-load (log-str &rest args) 
-  `(when *print-log-info-load*
+  `(when (logger-print-log-info-load-p *logger*)
      (let ((*fn-log-info* *fn-log-info-load*))
        (log-info ,log-str ,@args)
        )))
