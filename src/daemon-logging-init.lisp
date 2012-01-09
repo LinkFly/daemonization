@@ -37,11 +37,6 @@
   (loop for (key . rest) on plist by #'cddr
      when (eq prop key) do (return t)))
 
-(defun get-datetime ()
-  (multiple-value-bind (sec min hour date month year)
-      (get-decoded-time)
-    (format nil "~D.~2,'0D.~2,'0D ~2,'0D:~2,'0D:~2,'0D" year month date hour min sec)))
-
 (defun logging-init ()    
   (setf *logger* (plist-to-logger (with-open-file (stream (get-logging-conf-file))
 				    (read stream))))
@@ -53,12 +48,15 @@
 	       fn-get-pid
 	       fn-get-username
 	       fn-get-groupname
+	       fn-get-datetime
 
 	       print-pid-p
 	       print-username-p
 	       print-groupname-p
 
-	       print-call-p)
+	       print-call-p
+	       print-log-layer-p
+	       print-log-datetime-p)
       *logger*
     (setf 
      *fn-log-info* #'(lambda (fmt-str &rest args)
@@ -85,9 +83,9 @@
 							     (eq *trace-type* :result)
 							     print-call-p
 							     *print-called-form-with-result*))
-			    (:datetime (get-datetime) *print-log-datetime*)
+			    (:datetime (funcall fn-get-datetime) print-log-datetime-p)
 			    (:pid (funcall fn-get-pid) print-pid-p)
-			    (:layer (get-log-layer) *print-log-layer*)
+			    (:layer (get-log-layer) print-log-layer-p)
 			    (:trace-fn *trace-fn*)
 			    (:type-proc *process-type*)
 			    (:user-name (funcall fn-get-username) print-username-p)

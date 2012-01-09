@@ -27,12 +27,12 @@
 	   #:print-call-p #:print-pid-p
 	   #:log-info #:log-err #:defun-ext #:wrap-log
 	   #:print-log-info-p #:print-log-info-load-p #:print-log-err-p
-	   #:*log-indent* #:*print-log-layer* #:print-internal-call-p
+	   #:*log-indent* #:print-log-layer-p #:print-internal-call-p
 	   #:*print-called-form-with-result*
 	   
 	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
-	   #:*print-log-datetime*
+	   #:print-log-datetime-p
 	   #:*disabled-functions-logging*
 	   #:*disabled-layers-logging*
 	   #:*fn-log-info-load*
@@ -44,6 +44,7 @@
 	   #:*main-function-symbol*
 	   #:print-username-p #:print-groupname-p
 	   #:fn-get-pid #:fn-get-username #:fn-get-groupname
+	   #:fn-get-datetime
 
 	   ;; for finding pid-files 
 	   #:*pid-files-dirname* #:get-pid-files-dir 

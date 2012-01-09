@@ -2,12 +2,12 @@
   (:use :cl)
   (:export #:log-info #:log-err #:defun-ext #:wrap-log
 	   #:print-log-info-p #:print-log-err-p
-	   #:*log-indent* #:*print-log-layer* #:print-internal-call-p
+	   #:*log-indent* #:print-log-layer-p #:print-internal-call-p
 	   #:*print-called-form-with-result*
 	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* 	   
 	   #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
-	   #:*print-log-datetime* 
+	   #:print-log-datetime-p
 	   #:*disabled-functions-logging*
 	   #:*disabled-layers-logging*
 	   #:*process-type*
@@ -24,6 +24,7 @@
 	   #:*logger*
 	   #:fn-create-log-plist #:fn-correct-log-plist
 	   #:fn-wrapped-begin-fmt-str #:fn-print-pair 
+	   #:fn-get-datetime
 	   #:print-call-p
 
 	   ;;Utils
@@ -36,12 +37,10 @@
 (defparameter *log-indent* 0)
 (defparameter *log-indent-size* 2)
 
-(defparameter *print-log-layer* t)
 (defparameter *print-called-form-with-result* t)
 (defparameter *disabled-functions-logging* nil)
 (defparameter *disabled-layers-logging* nil)
 (defparameter *log-prefix* nil)
-(defparameter *print-log-datetime* nil)
 (defparameter *print-trace-function* nil)
 
 (defparameter *simple-log* nil)
@@ -127,10 +126,17 @@
   (fn-wrapped-begin-fmt-str nil)
   (fn-print-pair (lambda (pair)
 		   (format nil " ~S ~S" (first pair) (second pair))))
+  (fn-get-datetime (lambda ()
+		     (multiple-value-bind (sec min hour date month year)
+			 (get-decoded-time)
+		       (format nil "~D.~2,'0D.~2,'0D ~2,'0D:~2,'0D:~2,'0D"
+			       year month date hour min sec))))
   (print-call-p t)
   (print-internal-call-p t)
   (print-log-info-p t)
   (print-log-err-p t)
+  (print-log-layer-p t)
+  (print-log-datetime-p t)
   )
 
 (declaim (type (or null base-logger) *logger*))
