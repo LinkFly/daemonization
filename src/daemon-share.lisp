@@ -37,8 +37,8 @@
 	   #:disabled-layers-logging	   
 	   #:*syslog-cleaning-p*
 	   #:*stopping-max-secs*
-	   #:*log-line-number*
-	   #:*print-log-line-number*
+	   #:log-line-number
+	   #:print-log-line-number-p
 	   #:*fn-correct-log-plist*
 	   #:*main-function-symbol*
 	   #:print-username-p #:print-groupname-p
@@ -141,6 +141,8 @@
   fn-get-username
   fn-get-groupname
 
+  (log-line-number 0)
+  (print-log-line-number-p t)
   (print-pid-p t)
   (print-username-p t)
   (print-groupname-p t)

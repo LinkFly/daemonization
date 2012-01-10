@@ -11,8 +11,6 @@
 	   #:disabled-functions-logging
 	   #:disabled-layers-logging
 	   #:*process-type*
-	   #:*log-line-number*
-	   #:*print-log-line-number*
 	   
 	   #:create-log-plist
 	   #:get-log-layer
@@ -38,11 +36,8 @@
 (defparameter *log-indent-size* 2)
 
 (defparameter *log-prefix* nil)
-(defparameter *print-trace-function* nil)
 
 (defparameter *simple-log* nil)
-(defparameter *log-line-number* 0)
-(defparameter *print-log-line-number* t)
 
 (defparameter *process-type* nil)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -119,6 +114,7 @@
 			 (get-decoded-time)
 		       (format nil "~D.~2,'0D.~2,'0D ~2,'0D:~2,'0D:~2,'0D"
 			       year month date hour min sec))))
+  
   (print-call-p t)
   (print-called-form-with-result-p t)
   (print-internal-call-p t)

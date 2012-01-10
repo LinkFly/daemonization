@@ -55,6 +55,9 @@
 	       fn-get-groupname
 	       fn-get-datetime
 
+	       log-line-number
+	       print-log-line-number-p
+	   
 	       print-pid-p
 	       print-username-p
 	       print-groupname-p
@@ -81,7 +84,7 @@
 			   (declare (ignore indent))
 			   (create-log-plist 
 			    (:daemonization *log-mode*)
-			    (:line *log-line-number* *print-log-line-number*)
+			    (:line log-line-number print-log-line-number-p)
 			    (:message fmt-str (member *log-mode* '(:info :error)))
 			    (:call fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :call) print-call-p))
 			    (:result fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :result) print-call-p))
