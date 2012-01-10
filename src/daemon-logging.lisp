@@ -4,7 +4,7 @@
 	   #:print-log-info-p #:print-log-err-p
 	   #:*log-indent* #:print-log-layer-p #:print-internal-call-p
 	   #:*print-called-form-with-result*
-	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* 	   
+	   #:fn-log-info #:fn-log-err #:fn-log-trace 	   
 	   #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
 	   #:print-log-datetime-p
@@ -52,15 +52,9 @@
 
 ;;; Logging for actions on differently layers, for using
 ;;; defining +log-layer+ (if it not defining then reading name of current package), 
-;;; *fn-log-info*, and *fn-log-err* special variables. Example:
+;;; fn-log-info, and fn-log-err slots of object into *logger* special variable. Example:
 
 (defconstant +log-layer+ :logging-layer)
-(defparameter *fn-log-info* #'(lambda (fmt-str &rest args)
-				(apply #'format t fmt-str args)))
-(defparameter *fn-log-err* #'(lambda (fmt-str &rest args)
-				(apply #'format t fmt-str args)))
-(defparameter *fn-log-trace* #'(lambda (fmt-str)
-				(funcall #'princ fmt-str)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -89,18 +83,9 @@
 (defun get-indent ()
   (make-string *log-indent* :initial-element #\Space))
 
-(defun get-log-fn (fn-log-str)
-  (let ((sym (when *def-in-package* (find-symbol fn-log-str *def-in-package*))))
-    (if (and sym (boundp sym))
-	(symbol-value sym)
-	(symbol-value (find-symbol fn-log-str (load-time-value *package*))))))
-
-(defun get-fn-log-info ()
-  (get-log-fn (symbol-name '*FN-LOG-INFO*)))
-(defun get-fn-log-err ()
-  (get-log-fn (symbol-name '*FN-LOG-ERR*)))
-(defun get-fn-log-trace ()
-  (get-log-fn (symbol-name '*FN-LOG-TRACE*)))
+(defun get-fn-log-info () (base-logger-fn-log-info *logger*))
+(defun get-fn-log-err () (base-logger-fn-log-err *logger*))
+(defun get-fn-log-trace () (base-logger-fn-log-trace *logger*))
 
 (defun get-log-layer ()
   (let ((layer-sym (when *def-in-package* (find-symbol (symbol-name '+LOG-LAYER+) *def-in-package*))))
@@ -119,6 +104,12 @@
 ;;;;;;;;;;;;;;;;;
 
 (defstruct base-logger 
+  (fn-log-info #'(lambda (fmt-str &rest args)
+		   (apply #'format t fmt-str args)))
+  (fn-log-err #'(lambda (fmt-str &rest args)
+		  (apply #'format t fmt-str args)))
+  (fn-log-trace #'(lambda (fmt-str)
+		     (funcall #'princ fmt-str)))
   (fn-create-log-plist (lambda (fmt-str &key extra-fmt-str (indent ""))
 			 (list :message (concatenate 'string indent fmt-str)
 			       :extra-message extra-fmt-str)))

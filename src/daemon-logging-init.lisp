@@ -40,11 +40,16 @@
 (defun logging-init ()    
   (setf *logger* (plist-to-logger (with-open-file (stream (get-logging-conf-file))
 				    (read stream))))
-  (with-slots (fn-create-log-plist 
+  (with-slots (fn-log-info
+	       fn-log-info-load
+	       fn-log-err
+	       fn-log-trace
+
+	       fn-create-log-plist 
 	       fn-correct-log-plist
 	       fn-wrapped-begin-fmt-str
-	       fn-print-pair
-	       
+	       fn-print-pair	       
+
 	       fn-get-pid
 	       fn-get-username
 	       fn-get-groupname
@@ -59,14 +64,14 @@
 	       print-log-datetime-p)
       *logger*
     (setf 
-     *fn-log-info* #'(lambda (fmt-str &rest args)
+     fn-log-info #'(lambda (fmt-str &rest args)
 		       (add-daemon-log (apply #'format nil fmt-str args))
 		       (apply (gen-fn-log :info #'syslog-info) fmt-str args))
-     *fn-log-info-load* *fn-log-info*
-     *fn-log-err* #'(lambda (fmt-str &rest args)
+     fn-log-info-load fn-log-info
+     fn-log-err #'(lambda (fmt-str &rest args)
 		      (add-daemon-log (concatenate 'string "ERROR: " (apply #'format nil fmt-str args)))
 		      (apply (gen-fn-log :error #'syslog-err) (concatenate 'string "ERROR: " fmt-str) args))
-     *fn-log-trace* #'(lambda (fmt-str)
+     fn-log-trace #'(lambda (fmt-str)
 			(apply (gen-fn-log :trace #'syslog-info) "~A" (add-daemon-log fmt-str) nil))
      fn-get-pid #'(lambda () (with-tmp-logger ((print-call-p nil)) (getpid)))
      fn-get-username (lambda () (with-tmp-logger ((print-call-p nil)) (get-username)))

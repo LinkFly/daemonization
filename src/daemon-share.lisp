@@ -30,12 +30,11 @@
 	   #:*log-indent* #:print-log-layer-p #:print-internal-call-p
 	   #:*print-called-form-with-result*
 	   
-	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* #:*log-prefix*
+	   #:fn-log-info #:fn-log-info-load #:fn-log-err #:fn-log-trace #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
 	   #:print-log-datetime-p
 	   #:*disabled-functions-logging*
-	   #:*disabled-layers-logging*
-	   #:*fn-log-info-load*
+	   #:*disabled-layers-logging*	   
 	   #:*syslog-cleaning-p*
 	   #:*stopping-max-secs*
 	   #:*log-line-number*
@@ -115,7 +114,6 @@
 
 (define-constant +system-name+ :daemonization)
 
-(defparameter *fn-log-info-load* *fn-log-info* "Function for logging at load time")
 (defparameter *syslog-cleaning-p* t "Removing from output to syslog string #012 and spaces")
 (defparameter *stopping-max-secs* 60 "Maximum time for tries normal stopping daemons")
 (defparameter *pid-files-dirname* "pid-files" "Default directory for saving pid-files")
@@ -138,6 +136,7 @@
   (admin-trace-destination :system :type (or string pathname (eql :system)))
   (count '(1 1))
 
+  fn-log-info-load ;;Function for logging at load time
   fn-get-pid 
   fn-get-username
   fn-get-groupname
@@ -338,7 +337,7 @@ form."
 ;;;;;;;;;; logging ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmacro log-info-load (log-str &rest args) 
   `(when (logger-print-log-info-load-p *logger*)
-     (let ((*fn-log-info* *fn-log-info-load*))
+     (with-tmp-logger ((fn-log-info (slot-value *logger* 'fn-log-info-load)))
        (log-info ,log-str ,@args)
        )))
 

@@ -87,12 +87,10 @@
     #-sbcl (error "Not implemented on not sbcl lisps")    
     #+sbcl 
     (enable-interrupt sigusr1
-		      (let ((fn-log-info-val *fn-log-info*)
-			    (fn-log-trace-val *fn-log-trace*)) 
+		      (let ((logger-val *logger*))
 			#'(lambda (sig info context)
 			    (declare (ignore sig info context))
-			    (let ((*fn-log-info* fn-log-info-val)
-				  (*fn-log-trace* fn-log-trace-val))
+			    (let ((*logger* logger-val))
 			      (progn
 				(log-info "Stop~A daemon" (if daemon-name (concatenate 'string " " daemon-name) ""))
 				(cur-exit +ex-ok+)))))))
