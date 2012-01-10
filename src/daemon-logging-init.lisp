@@ -60,6 +60,7 @@
 	       print-groupname-p
 
 	       print-call-p
+	       print-called-form-with-result-p
 	       print-log-layer-p
 	       print-log-datetime-p)
       *logger*
@@ -87,7 +88,7 @@
 			    (:called-form extra-fmt-str (and (eq *log-mode* :trace)
 							     (eq *trace-type* :result)
 							     print-call-p
-							     *print-called-form-with-result*))
+							     print-called-form-with-result-p))
 			    (:datetime (funcall fn-get-datetime) print-log-datetime-p)
 			    (:pid (funcall fn-get-pid) print-pid-p)
 			    (:layer (get-log-layer) print-log-layer-p)

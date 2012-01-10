@@ -3,13 +3,13 @@
   (:export #:log-info #:log-err #:defun-ext #:wrap-log
 	   #:print-log-info-p #:print-log-err-p
 	   #:*log-indent* #:print-log-layer-p #:print-internal-call-p
-	   #:*print-called-form-with-result*
+	   #:print-called-form-with-result-p
 	   #:fn-log-info #:fn-log-err #:fn-log-trace 	   
 	   #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
 	   #:print-log-datetime-p
-	   #:*disabled-functions-logging*
-	   #:*disabled-layers-logging*
+	   #:disabled-functions-logging
+	   #:disabled-layers-logging
 	   #:*process-type*
 	   #:*log-line-number*
 	   #:*print-log-line-number*
@@ -37,9 +37,6 @@
 (defparameter *log-indent* 0)
 (defparameter *log-indent-size* 2)
 
-(defparameter *print-called-form-with-result* t)
-(defparameter *disabled-functions-logging* nil)
-(defparameter *disabled-layers-logging* nil)
 (defparameter *log-prefix* nil)
 (defparameter *print-trace-function* nil)
 
@@ -123,11 +120,15 @@
 		       (format nil "~D.~2,'0D.~2,'0D ~2,'0D:~2,'0D:~2,'0D"
 			       year month date hour min sec))))
   (print-call-p t)
+  (print-called-form-with-result-p t)
   (print-internal-call-p t)
   (print-log-info-p t)
   (print-log-err-p t)
   (print-log-layer-p t)
-  (print-log-datetime-p t)
+  (print-log-datetime-p nil)
+
+  (disabled-functions-logging nil)
+  (disabled-layers-logging nil)
   )
 
 (declaim (type (or null base-logger) *logger*))
@@ -344,9 +345,9 @@
      (t (str-list-close (format nil "(:VALUES ~{~A ~}" (mapcar #'present-form (cons form extra-forms)))))))
 
 (defun is-logging-p (fn-sym package)
-  (and (not (member fn-sym *disabled-functions-logging*))
+  (and (not (member fn-sym (base-logger-disabled-functions-logging *logger*)))
        (not (member (package-name package)
-	       *disabled-layers-logging* 
+	       (base-logger-disabled-layers-logging *logger*)
 	       :test #'string-equal
 	       :key #'princ-to-string))))
 
@@ -370,7 +371,8 @@
 			     form
 			     `(apply ,fn ,args)))))
 	     (when (is-logging-p ,fn *def-in-package*)
-	       (syslog-call-out (apply #'present-form ,res) (when *print-called-form-with-result* ,form-str)))
+	       (syslog-call-out (apply #'present-form ,res) 
+				(when (base-logger-print-called-form-with-result-p *logger*) ,form-str)))
 	     (apply #'values ,res))))))
 
 (defmacro wrap-log (&rest forms)
@@ -398,7 +400,9 @@
 		      (locally ,@(remove-declare-ignore body)))))	   
 	   (when (and (slot-value *logger* 'print-call-p)
 		      (is-logging-p ,this-name *def-in-package*))
-	     (apply #'syslog-call-out (apply #'present-form ,res) (when *print-called-form-with-result* (list ,form-str))))
+	     (apply #'syslog-call-out (apply #'present-form ,res) 
+		    (when (base-logger-print-called-form-with-result-p *logger*) 
+		      (list ,form-str))))
 	   (apply #'values ,res))))))
 
 ;(defun-ext f (x y &key z) (log-info "this f") (+ x z (g y)))

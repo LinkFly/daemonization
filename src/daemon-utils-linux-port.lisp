@@ -230,7 +230,7 @@
 (Cauting! This is function using for root tests and need for switch user (then writing logs with new user).
 He not defining as (defun-ext ...). Cauting2!!! Function is not must using logger system (not must using
 defining functions defining with defun-ext)"
-  (let ((*disabled-functions-logging* '(umask open close)))
+  (with-tmp-logger ((disabled-functions-logging '(umask open close)))
     (let ((pred-umask (umask 0)))
       (setq fd (open file (boole boole-ior O-RDWR O-CREAT) #b110110110))
       (close fd)

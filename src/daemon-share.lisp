@@ -28,13 +28,13 @@
 	   #:log-info #:log-err #:defun-ext #:wrap-log
 	   #:print-log-info-p #:print-log-info-load-p #:print-log-err-p
 	   #:*log-indent* #:print-log-layer-p #:print-internal-call-p
-	   #:*print-called-form-with-result*
+	   #:print-called-form-with-result-p
 	   
 	   #:fn-log-info #:fn-log-info-load #:fn-log-err #:fn-log-trace #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
 	   #:print-log-datetime-p
-	   #:*disabled-functions-logging*
-	   #:*disabled-layers-logging*	   
+	   #:disabled-functions-logging
+	   #:disabled-layers-logging	   
 	   #:*syslog-cleaning-p*
 	   #:*stopping-max-secs*
 	   #:*log-line-number*
