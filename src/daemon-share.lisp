@@ -23,11 +23,13 @@
 
 	   ;;; Logging
 	   #:*logger*
+	   #:copy-logger
 	   #:with-tmp-logger
 	   #:print-call-p #:print-pid-p
 	   #:log-info #:log-err #:defun-ext #:wrap-log
 	   #:print-log-info-p #:print-log-info-load-p #:print-log-err-p
-	   #:*log-indent* #:print-log-layer-p #:print-internal-call-p
+	   #:log-indent #:log-indent-size
+	   #:print-log-layer-p #:print-internal-call-p
 	   #:print-called-form-with-result-p
 	   
 	   #:fn-log-info #:fn-log-info-load #:fn-log-err #:fn-log-trace #:*log-prefix*
