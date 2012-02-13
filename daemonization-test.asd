@@ -18,11 +18,17 @@
 (defparameter *test-mode* nil)
 
 (defun get-test-mode ()
-  (progv (list (find-symbol "*PRINT-CALL*" :daemon-share))
-      '(nil)
-    (if (funcall (find-symbol "ADMIN-CURRENT-USER-P" :daemon-utils-port))
-	:root
-	:user)))
+  (symbol-macrolet ((print-call-p (slot-value (symbol-value (find-symbol "*LOGGER*" :daemon-share))
+					      (find-symbol "PRINT-CALL-P" :daemon-share))))
+    (let* ((old-val print-call-p)
+	   result)
+      (setf print-call-p nil
+	    result (if (funcall (find-symbol "ADMIN-CURRENT-USER-P"
+					     :daemon-utils-port))
+		       :root
+		       :user)
+	    print-call-p old-val)
+      result)))
 
 (defun get-system-path ()
   (asdf:component-pathname (asdf:find-system +system-name+)))
@@ -65,9 +71,13 @@
     (funcall (find-symbol "RECREATE-FILE-ALLOW-WRITE-OTHER" :daemon-utils-port) 
 	     (get-syslog-file))))
 
-(defun dynvar-sets (pairs)
+(define-symbol-macro logger (symbol-value (find-symbol "*LOGGER*" :daemon-share)))
+
+(defun set-logger-slots (pairs)
   (dolist (pair pairs)
-    (setf (symbol-value (find-symbol (first pair) :daemon-share)) 
+    (setf (slot-value logger (find-symbol
+			      (symbol-name (first pair))
+			      :daemon-share)) 
 	  (second pair))))
 
 (defmethod perform :before ((operation load-op) 
@@ -78,17 +88,16 @@
   (let* ((*test-mode* (get-test-mode))
 	 (log-file (get-log-file))
 	 (syslog-file (get-syslog-file)))
-    (setf (symbol-value (find-symbol "*LOGGER*" :daemon-share))
-	  (funcall (find-symbol "PLIST-TO-LOGGER" :daemon-share)
-		   `(
-		     :files-dir ,+test-dir+
-		     :admin-files-dir ,+test-dir+
-		     :info-destination ,log-file
-		     :error-destination ,log-file
-		     :trace-destination ,log-file 
-		     :admin-info-destination ,syslog-file 
-		     :admin-error-destination ,syslog-file
-		     :admin-trace-destination ,syslog-file)))))
+    (setf logger (funcall (find-symbol "PLIST-TO-LOGGER" :daemon-share)
+			  `(
+			    :files-dir ,+test-dir+
+			    :admin-files-dir ,+test-dir+
+			    :info-destination ,log-file
+			    :error-destination ,log-file
+			    :trace-destination ,log-file 
+			    :admin-info-destination ,syslog-file 
+			    :admin-error-destination ,syslog-file
+			    :admin-trace-destination ,syslog-file)))))
 
 (defmethod perform :after ((operation load-op) 
 			   (component (eql (asdf:find-component +daemonization-system+
@@ -98,10 +107,10 @@
 				    #'(lambda (fmt-str &rest args) 
 					(let ((*test-mode* test-mode-val))
 					  (apply 'print-syslog fmt-str args))))))
-    (dynvar-sets `(("*FN-LOG-INFO*" ,fn-wrapped-print-syslog)
-		   ("*FN-LOG-ERR*" ,fn-wrapped-print-syslog)
-		   ("*FN-LOG-TRACE*" ,fn-wrapped-print-syslog)
-		   ("*FN-LOG-INFO-LOAD*" ,fn-wrapped-print-syslog)))
+    (set-logger-slots `((fn-log-info ,fn-wrapped-print-syslog)
+			(fn-log-err ,fn-wrapped-print-syslog)
+			(fn-log-trace ,fn-wrapped-print-syslog)
+			(fn-log-info-load ,fn-wrapped-print-syslog)))
     (ensure-no-syslog-file)
     (case *test-mode*
       (:root (recreate-root-syslog-file)))))

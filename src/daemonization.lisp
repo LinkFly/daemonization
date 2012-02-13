@@ -4,7 +4,7 @@
 (defpackage :daemonization 
   (:use :cl :daemon-share :daemon-core-port) ;:sb-introspect :sb-debug)
   (:import-from :daemon-utils-port #:exit #:getpid)
-  (:export #:daemonized #:get-daemon-log-list #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* #:*fn-log-info-load*
+  (:export #:daemonized #:get-daemon-log-list #:fn-log-info #:fn-log-err #:fn-log-trace #:fn-log-info-load
 	   #:+all-daemon-commands+ #:+conf-parameters+
 	   ;; for reading extra-status
 	   #:extra-status
@@ -30,7 +30,7 @@
 (in-package :daemonization)
 
 ;;;;; Initialization ;;;;;;;;;;
-;;; For correct reset :line property (in log-plist, in call *fn-correct-log-plist*)
+;;; For correct reset :line property (in log-plist, in call function in slot's fn-correct-log-plist of *logger*)
 (setf *main-function-symbol* 'daemonized)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -138,10 +138,10 @@
 		      ((null result) cur-params)))))))
 
 (defun-ext probe-conf-params (conf-params)   
-  (let ((*fn-log-info* nil)
-	(*fn-log-err* nil)
-	(*print-call* nil))
-    (correct-and-check-conf-params conf-params #'check-conf-params)))
+  (with-tmp-logger ((fn-log-info nil)
+		    (fn-log-err nil)
+		    (print-call-p nil))
+      (correct-and-check-conf-params conf-params #'check-conf-params)))
 
 (defun-ext check-and-correct-pid-file-param (conf-params daemon-command)
   (let ((pid-file (getf conf-params :pid-file))
@@ -330,8 +330,8 @@
      if (find #\~ dir) do (return nil)
      finally (return t)))
 
-;;; Setted *main-function-symbol* in 'daemonization:daemonized for correct reset :line property (in log-plist, in call 
-;;;   *fn-correct-log-plist*). Look at the begin in Initialization.
+;;; Setted *main-function-symbol* in 'daemonization:daemonized for correct reset :line property (in log-plist, in function 
+;;;   slot's fn-correct-log-plist of *logger*). Look at the begin in Initialization.
 
 (declaim (ftype (function ((or pathname string null config-plist) string &key 
 			   (:on-error (member :return-error :as-ignore-errors :call-error :exit-from-lisp)) 

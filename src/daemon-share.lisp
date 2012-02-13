@@ -23,25 +23,29 @@
 
 	   ;;; Logging
 	   #:*logger*
+	   #:copy-logger
+	   #:with-tmp-logger
+	   #:print-call-p #:print-pid-p
 	   #:log-info #:log-err #:defun-ext #:wrap-log
-	   #:*print-log-info* #:*print-log-info-load* #:*print-log-err*
-	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
-	   #:*print-call* #:*print-called-form-with-result*
-	   #:*print-pid*
-	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* #:*log-prefix*
+	   #:print-log-info-p #:print-log-info-load-p #:print-log-err-p
+	   #:log-indent #:log-indent-size
+	   #:print-log-layer-p #:print-internal-call-p
+	   #:print-called-form-with-result-p
+	   
+	   #:fn-log-info #:fn-log-info-load #:fn-log-err #:fn-log-trace #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
-	   #:*print-log-datetime* #:*fn-log-pid*
-	   #:*disabled-functions-logging*
-	   #:*disabled-layers-logging*
-	   #:*fn-log-info-load*
+	   #:print-log-datetime-p
+	   #:disabled-functions-logging
+	   #:disabled-layers-logging	   
 	   #:*syslog-cleaning-p*
 	   #:*stopping-max-secs*
-	   #:*log-line-number*
-	   #:*print-log-line-number*
+	   #:log-line-number
+	   #:print-log-line-number-p
 	   #:*fn-correct-log-plist*
 	   #:*main-function-symbol*
-	   #:*print-username* #:*print-groupname*
-	   #:*fn-get-username* #:*fn-get-groupname*
+	   #:print-username-p #:print-groupname-p
+	   #:fn-get-pid #:fn-get-username #:fn-get-groupname
+	   #:fn-get-datetime
 
 	   ;; for finding pid-files 
 	   #:*pid-files-dirname* #:get-pid-files-dir 
@@ -112,8 +116,6 @@
 
 (define-constant +system-name+ :daemonization)
 
-(defparameter *print-log-info-load* t)
-(defparameter *fn-log-info-load* *fn-log-info* "Function for logging at load time")
 (defparameter *syslog-cleaning-p* t "Removing from output to syslog string #012 and spaces")
 (defparameter *stopping-max-secs* 60 "Maximum time for tries normal stopping daemons")
 (defparameter *pid-files-dirname* "pid-files" "Default directory for saving pid-files")
@@ -125,7 +127,7 @@
 (defparameter *main-function-symbol* nil "Setting in :daemonization package. Needed for correct reset
 :line property (in log-plist) in function call *fn-correct-log-plist*")
 
-(defstruct logger
+(defstruct (logger (:include base-logger))
   (files-dir "logs" :type string)
   (admin-files-dir "logs" :type string)
   (info-destination :system :type (or string pathname (eql :system)))
@@ -134,10 +136,21 @@
   (admin-info-destination :system :type (or string pathname (eql :system)))
   (admin-error-destination :system :type (or string pathname (eql :system)))
   (admin-trace-destination :system :type (or string pathname (eql :system)))
-  (count '(1 1)))
+  (count '(1 1))
 
-(declaim (type (or null logger) *logger*))
-(defparameter *logger* nil "Contains logger object with the parameters readed from *conf-log-file*")
+  fn-log-info-load ;;Function for logging at load time
+  fn-get-pid 
+  fn-get-username
+  fn-get-groupname
+
+  (log-line-number 0)
+  (print-log-line-number-p t)
+  (print-pid-p t)
+  (print-username-p t)
+  (print-groupname-p t)
+  
+  (print-log-info-load-p t)
+  )
 
 (defparameter *timeout-daemon-response* 5 "Second for waiting init daemon(child process 
 after fork). If daemon not response - calling timeout-forked-process-response-error")
@@ -327,8 +340,8 @@ form."
 
 ;;;;;;;;;; logging ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmacro log-info-load (log-str &rest args) 
-  `(when *print-log-info-load*
-     (let ((*fn-log-info* *fn-log-info-load*))
+  `(when (logger-print-log-info-load-p *logger*)
+     (with-tmp-logger ((fn-log-info (slot-value *logger* 'fn-log-info-load)))
        (log-info ,log-str ,@args)
        )))
 
