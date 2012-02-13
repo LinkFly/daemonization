@@ -1,67 +1,50 @@
 (defpackage :daemon-logging 
   (:use :cl)
   (:export #:log-info #:log-err #:defun-ext #:wrap-log
-	   #:*print-log-info* #:*print-log-err*
-	   #:*log-indent* #:*print-log-layer* #:*print-internal-call* 
-	   #:*print-call* #:*print-called-form-with-result*
-	   #:*print-pid*
-	   #:*fn-log-info* #:*fn-log-err* #:*fn-log-trace* 
-	   #:*fn-log-pid* #:*fn-correct-log-plist*
+	   #:print-log-info-p #:print-log-err-p
+	   #:log-indent #:log-indent-size
+	   #:print-log-layer-p #:print-internal-call-p
+	   #:print-called-form-with-result-p
+	   #:fn-log-info #:fn-log-err #:fn-log-trace 	   
 	   #:*log-prefix*
 	   #:add-daemon-log #:get-daemon-log-list
-	   #:*print-log-datetime* 
-	   #:*disabled-functions-logging*
-	   #:*disabled-layers-logging*
+	   #:print-log-datetime-p
+	   #:disabled-functions-logging
+	   #:disabled-layers-logging
 	   #:*process-type*
-	   #:*log-line-number*
-	   #:*print-log-line-number*
-	   #:*print-username* #:*print-groupname*
-	   #:*fn-get-username* #:*fn-get-groupname*))
+	   
+	   #:create-log-plist
+	   #:get-log-layer
+	   #:*log-mode*
+	   #:*trace-fn*
+	   #:*trace-type*
+
+	   #:base-logger
+	   #:*logger*
+	   #:fn-create-log-plist #:fn-correct-log-plist
+	   #:fn-wrapped-begin-fmt-str #:fn-print-pair 
+	   #:fn-get-datetime
+	   #:print-call-p
+
+	   ;;Utils
+	   #:with-tmp-logger))
 
 (in-package :daemon-logging)
 
 ;;; Logging configure parameters
-(declaim (type fixnum *log-indent* *log-indent-size*))
-(defparameter *log-indent* 0)
-(defparameter *log-indent-size* 2)
-
-(defparameter *print-log-info* t)
-(defparameter *print-log-err* t)
-(defparameter *print-log-layer* t)
-(defparameter *print-internal-call* t)
-(defparameter *print-call* t)
-(defparameter *print-called-form-with-result* t)
-(defparameter *disabled-functions-logging* nil)
-(defparameter *disabled-layers-logging* nil)
 (defparameter *log-prefix* nil)
-(defparameter *print-log-datetime* nil)
-(defparameter *print-trace-function* nil)
-(defparameter *print-pid* t)
-(defparameter *print-username* t)
-(defparameter *print-groupname* t)
+
 (defparameter *simple-log* nil)
-(defparameter *log-line-number* 0)
-(defparameter *print-log-line-number* t)
 
 (defparameter *process-type* nil)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Logging for actions on differently layers, for using
 ;;; defining +log-layer+ (if it not defining then reading name of current package), 
-;;; *fn-log-info*, and *fn-log-err* special variables. Example:
+;;; fn-log-info, and fn-log-err slots of object into *logger* special variable. Example:
 
 (defconstant +log-layer+ :logging-layer)
-(defparameter *fn-log-info* #'(lambda (fmt-str &rest args)
-				(apply #'format t fmt-str args)))
-(defparameter *fn-log-err* #'(lambda (fmt-str &rest args)
-				(apply #'format t fmt-str args)))
-(defparameter *fn-log-trace* #'(lambda (fmt-str)
-				(funcall #'princ fmt-str)))
-(defparameter *fn-log-pid* nil)
-(defparameter *fn-get-username* nil)
-(defparameter *fn-get-groupname* nil)
-(defparameter *fn-correct-log-plist* #'identity)
-					 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;; Logging native parameter ;;;;;;;;;;
@@ -77,6 +60,45 @@
 (defparameter *trace-type* nil "Must be (or :call :result)")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;; Main logger structure ;;;;;;;;;;;;;;;;;;;
+(defstruct base-logger 
+  (fn-log-info #'(lambda (fmt-str &rest args)
+		   (apply #'format t fmt-str args)))
+  (fn-log-err #'(lambda (fmt-str &rest args)
+		  (apply #'format t fmt-str args)))
+  (fn-log-trace #'(lambda (fmt-str)
+		     (funcall #'princ fmt-str)))
+  (fn-create-log-plist (lambda (fmt-str &key extra-fmt-str (indent ""))
+			 (list :message (concatenate 'string indent fmt-str)
+			       :extra-message extra-fmt-str)))
+  (fn-correct-log-plist #'identity)
+  (fn-wrapped-begin-fmt-str nil)
+  (fn-print-pair (lambda (pair)
+		   (format nil " ~S ~S" (first pair) (second pair))))
+  (fn-get-datetime (lambda ()
+		     (multiple-value-bind (sec min hour date month year)
+			 (get-decoded-time)
+		       (format nil "~D.~2,'0D.~2,'0D ~2,'0D:~2,'0D:~2,'0D"
+			       year month date hour min sec))))
+  
+  (log-indent 0)
+  (log-indent-size 2)
+  (print-call-p t)
+  (print-called-form-with-result-p t)
+  (print-internal-call-p t)
+  (print-log-info-p t)
+  (print-log-err-p t)
+  (print-log-layer-p t)
+  (print-log-datetime-p nil)
+
+  (disabled-functions-logging nil)
+  (disabled-layers-logging nil)
+  )
+
+(declaim (type (or null base-logger) *logger*))
+(defparameter *logger* (make-base-logger) "Contains logger object with the parameters for controlling logging operations")
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun add-daemon-log (log)
   (push log *daemon-logs*)
   log)
@@ -87,20 +109,11 @@
 				       (apply #'concatenate 'string (reverse *daemon-logs*))))))
 
 (defun get-indent ()
-  (make-string *log-indent* :initial-element #\Space))
+  (make-string (base-logger-log-indent *logger*) :initial-element #\Space))
 
-(defun get-log-fn (fn-log-str)
-  (let ((sym (when *def-in-package* (find-symbol fn-log-str *def-in-package*))))
-    (if (and sym (boundp sym))
-	(symbol-value sym)
-	(symbol-value (find-symbol fn-log-str (load-time-value *package*))))))
-
-(defun get-fn-log-info ()
-  (get-log-fn (symbol-name '*FN-LOG-INFO*)))
-(defun get-fn-log-err ()
-  (get-log-fn (symbol-name '*FN-LOG-ERR*)))
-(defun get-fn-log-trace ()
-  (get-log-fn (symbol-name '*FN-LOG-TRACE*)))
+(defun get-fn-log-info () (base-logger-fn-log-info *logger*))
+(defun get-fn-log-err () (base-logger-fn-log-err *logger*))
+(defun get-fn-log-trace () (base-logger-fn-log-trace *logger*))
 
 (defun get-log-layer ()
   (let ((layer-sym (when *def-in-package* (find-symbol (symbol-name '+LOG-LAYER+) *def-in-package*))))
@@ -118,14 +131,31 @@
 ;(f 3 4)
 ;;;;;;;;;;;;;;;;;
 
-(defun get-datetime ()
-  (multiple-value-bind (sec min hour date month year)
-      (get-decoded-time)
-    (format nil "~D.~2,'0D.~2,'0D ~2,'0D:~2,'0D:~2,'0D" year month date hour min sec)))
 
-(defun is-property-p (prop plist)
-  (loop for (key . rest) on plist by #'cddr
-     when (eq prop key) do (return t)))
+
+;;;;; Utils ;;;;;;;;;;;;;;
+(defmacro with-tmp-slots (slots-newvals obj &body body 
+			  &aux slots s-slots s-oldvals s-obj)
+  (setf slots (mapcar #'first slots-newvals)
+	s-slots (gentemp "SLOTS-")
+	s-oldvals (gentemp "OLDVALS-")
+	s-obj (gentemp "OBJ-"))
+  `(let ((,s-obj ,obj))
+     (with-slots ,slots ,s-obj
+     (let ((,s-oldvals (list ,@slots))
+	   (,s-slots ',slots))
+       (prog2
+	   (progn ,@(mapcar #'(lambda (x) (cons 'setf x))
+			    slots-newvals))
+	   (progn ,@body)
+	 (loop 
+	    :for slot :in ,s-slots
+	    :for oldval :in ,s-oldvals
+	    :do (setf (slot-value ,s-obj slot) oldval)))))))
+
+(defmacro with-tmp-logger (slots-newvals &body body)
+  `(with-tmp-slots ,slots-newvals *logger*
+     ,@body))
 
 (defmacro create-log-plist (&rest details)
   (cons 'append 
@@ -137,55 +167,30 @@
 	   collect `(when ,(third detail) (list ,key ,message)))))
 	  
 (defun wrap-fmt-str (fmt-str &key extra-fmt-str (indent "") &aux log-plist)
-  (when *simple-log* 
-    (return-from wrap-fmt-str fmt-str))
-  (setq log-plist
-	(create-log-plist
-	 (:daemonization *log-mode*)
-	 (:line *log-line-number* *print-log-line-number*)
-	 (:message fmt-str (member *log-mode* '(:info :error)))
-	 (:call fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :call) *print-call*))
-	 (:result fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :result) *print-call*))
-	 (:called-form extra-fmt-str (and (eq *log-mode* :trace) (eq *trace-type* :result) *print-call* *print-called-form-with-result*))
-	 (:datetime (get-datetime) *print-log-datetime*)
-	 (:pid (funcall *fn-log-pid*) *print-pid*)
-	 (:layer (get-log-layer) *print-log-layer*)
-	 (:trace-fn *trace-fn*)
-	 (:type-proc *process-type*)
-	 (:user-name (funcall *fn-get-username*) *print-username*)
-	 (:group-name (funcall *fn-get-groupname*) *print-groupname*)))
-  (setq log-plist (funcall *fn-correct-log-plist* log-plist))
-  (apply 'concatenate 
-	 (append `(string ,(string #\Newline) "(")
-		 (loop 
-		    with message = (getf log-plist :message)
-		    with line-number = (getf log-plist :line)
-		    with cur-main-key = (loop for key in '(:message :call :result)
-					   if (is-property-p key log-plist) do (return key))
-		    with begin-str = (prog1 
-					 (concatenate 'string 
-						      (prog1 (format nil "~S ~6S" (first log-plist) (second log-plist))
-							(remf log-plist (first log-plist)))
-						      (concatenate 'string 
-								   (if (is-property-p :line log-plist)
-								       (format nil " ~S ~9A " :line line-number)
-								       " ")
-								   (format nil "~8S "cur-main-key)
-								   indent
-								   (let ((main-value (getf log-plist cur-main-key)))
-								     (cond 
-								       ((eq :message cur-main-key) 
-									(concatenate 'string " \"" message "\""))
-								       ((member cur-main-key '(:call :result))
-									main-value)))))
-				       (loop for key in '(:line :message :call :result) do (remf log-plist key)))
-		    for pair on log-plist by #'cddr 
-		    collect (if (member (first pair) '(:call :result :called-form))
-				(format nil " ~S ~A" (first pair) (second pair))
-				(format nil " ~S ~S" (first pair) (second pair))) 
-		    into result 
-		    finally (return (cons begin-str result)))
-		 (list ")"))))
+  (with-slots (fn-create-log-plist 
+	       fn-correct-log-plist
+	       fn-wrapped-begin-fmt-str
+	       fn-print-pair)
+      *logger*
+    (when *simple-log* 
+      (return-from wrap-fmt-str fmt-str))
+    (setq log-plist (funcall fn-create-log-plist
+			     fmt-str 
+			     :extra-fmt-str extra-fmt-str
+			     :indent indent))
+    (when fn-correct-log-plist (setf log-plist (funcall fn-correct-log-plist log-plist)))
+    (apply 'concatenate 
+	   (append (list 'string (string #\Newline) "(")
+		   (when fn-wrapped-begin-fmt-str
+		     (multiple-value-bind (begin-str log-pl) 
+			 (funcall fn-wrapped-begin-fmt-str log-plist indent)
+		       (prog1 (when begin-str (list begin-str))
+			 (when log-pl (setf log-plist log-pl)))))
+		   (loop
+		      :for pair :on log-plist :by #'cddr 
+		      :for log-cur-str = (funcall fn-print-pair (subseq pair 0 2))
+		      :if log-cur-str :collect (concatenate 'string " " log-cur-str))
+		   (list ")")))))
 
 (defun slashing-str (str)
   (if (not (stringp str))
@@ -216,10 +221,10 @@
 	 (logging fn-log ,format-str ,@args)))))
 
 (defmacro log-info (format-str &rest args)
-  `(log-share (,format-str ,@args) get-fn-log-info *print-log-info* :info))
+  `(log-share (,format-str ,@args) get-fn-log-info (base-logger-print-log-info-p *logger*) :info))
 
 (defmacro log-err (format-str &rest args)
-  `(log-share (,format-str ,@args) get-fn-log-err *print-log-err* :error))
+  `(log-share (,format-str ,@args) get-fn-log-err (base-logger-print-log-err-p *logger*) :error))
 
 (defun syslog-trace (form-str &key extra-form-str trace-type)
   (declare (type (member :call :result) trace-type)
@@ -235,12 +240,12 @@
 			        
 (defun syslog-call-into (form-str)
   (syslog-trace form-str :trace-type :call)
-  (incf *log-indent* *log-indent-size*))
+  (incf (base-logger-log-indent *logger*) (base-logger-log-indent-size *logger*)))
   
 (defun syslog-call-out (result-form-str &optional called-form-str)  
-  (decf *log-indent* *log-indent-size*)
-  (if (< *log-indent* 0)
-      (error "*log-indent* not must be less zero. Not correct log operation."))
+  (decf (base-logger-log-indent *logger*) (base-logger-log-indent-size *logger*))
+  (if (< (base-logger-log-indent *logger*) 0)
+      (error "(base-logger-log-indent *logger*) not must be less zero. Not correct log operation."))
   (syslog-trace result-form-str :extra-form-str called-form-str :trace-type :result))
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -339,34 +344,35 @@
      (t (str-list-close (format nil "(:VALUES ~{~A ~}" (mapcar #'present-form (cons form extra-forms)))))))
 
 (defun is-logging-p (fn-sym package)
-  (and (not (member fn-sym *disabled-functions-logging*))
+  (and (not (member fn-sym (base-logger-disabled-functions-logging *logger*)))
        (not (member (package-name package)
-	       *disabled-layers-logging* 
+	       (base-logger-disabled-layers-logging *logger*)
 	       :test #'string-equal
 	       :key #'princ-to-string))))
 
 (defmacro wrap-log-form (form)
   (with-gensyms (form-str res fn args)
-    `(if (not *print-internal-call*)
+    `(if (not (base-logger-print-internal-call-p *logger*))
 	 ,form
-	 (let* ((*def-in-package* (load-time-value *package*))
-		(*log-indent* *log-indent*)
-		(,fn ',(first form))
-		,@(unless (is-special-or-macro-p (first form))
-			 `((,args (list ,@(rest form)))))
-		(,form-str (present-form 
-			    ,(if (is-special-or-macro-p (first form)) 
-				 `(quote ,form)
-				 `(cons ,fn ,args)))))
-	   (when (is-logging-p ,fn *def-in-package*)
-	     (syslog-call-into ,form-str))
-	   (let ((,res (multiple-value-list 
-			,(if (is-special-or-macro-p (first form))
-			     form
-			     `(apply ,fn ,args)))))
+	   (let* ((*logger* (copy-base-logger *logger*))
+		  (*def-in-package* (load-time-value *package*))		
+		  (,fn ',(first form))
+		  ,@(unless (is-special-or-macro-p (first form))
+			    `((,args (list ,@(rest form)))))
+		  (,form-str (present-form 
+			      ,(if (is-special-or-macro-p (first form)) 
+				   `(quote ,form)
+				   `(cons ,fn ,args)))))
 	     (when (is-logging-p ,fn *def-in-package*)
-	       (syslog-call-out (apply #'present-form ,res) (when *print-called-form-with-result* ,form-str)))
-	     (apply #'values ,res))))))
+	       (syslog-call-into ,form-str))
+	     (let ((,res (multiple-value-list 
+			  ,(if (is-special-or-macro-p (first form))
+			       form
+			       `(apply ,fn ,args)))))
+	       (when (is-logging-p ,fn *def-in-package*)
+		 (syslog-call-out (apply #'present-form ,res) 
+				  (when (base-logger-print-called-form-with-result-p *logger*) ,form-str)))
+	       (apply #'values ,res))))))
 
 (defmacro wrap-log (&rest forms)
   `(progn ,@(loop for form in forms
@@ -374,24 +380,28 @@
 
 (defmacro defun-ext (name args &body body)
   (with-gensyms (form-str res this-name)
-    `(defun ,name ,args
-       (let* ((,this-name ',name)
+    `(defun ,name ,args 
+       (let* ((*logger* (copy-base-logger *logger*))
+	      (,this-name ',name)
 	      (*def-in-package* (load-time-value *package*))
-	      (*trace-fn* ',name)
-	      (*log-indent* *log-indent*)
+	      (*trace-fn* ',name)	      
 	      (,form-str (present-form (cons ',name 
 					     (mapcar #'(lambda (arg)
 							 (if (consp arg)
 							     (list 'quote arg)
 							     arg))
 						     (list ,@(present-args args)))))))
-	 (when (and *print-call* (is-logging-p ,this-name *def-in-package*))
+	 (when (and (slot-value *logger* 'print-call-p) 
+		    (is-logging-p ,this-name *def-in-package*))
 	   (syslog-call-into ,form-str))
 
 	 (let ((,res (multiple-value-list 
 		      (locally ,@(remove-declare-ignore body)))))	   
-	   (when (and *print-call* (is-logging-p ,this-name *def-in-package*))
-	     (apply #'syslog-call-out (apply #'present-form ,res) (when *print-called-form-with-result* (list ,form-str))))
+	   (when (and (slot-value *logger* 'print-call-p)
+		      (is-logging-p ,this-name *def-in-package*))
+	     (apply #'syslog-call-out (apply #'present-form ,res) 
+		    (when (base-logger-print-called-form-with-result-p *logger*) 
+		      (list ,form-str))))
 	   (apply #'values ,res))))))
 
 ;(defun-ext f (x y &key z) (log-info "this f") (+ x z (g y)))

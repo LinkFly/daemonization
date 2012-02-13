@@ -170,5 +170,5 @@
 
 (defun root-run-tests (username)
   (run-tests-share :root
-		   "Tests daemonized ... "
+		   "Tests daemonized (with changing user) ... "
 		   (lambda (fn-return-if-child) (root-extra-tests username fn-return-if-child))))
