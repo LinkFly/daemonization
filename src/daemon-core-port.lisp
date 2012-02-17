@@ -23,6 +23,18 @@
 
 (in-package :daemon-core-port)
 
+(defun general-success-exit (result-values params)
+  (when *fn-exit*
+    (funcall *fn-exit*
+	     +ex-ok+
+	     (make-extra-status :result-values result-values
+				:pid (getpid)
+				:exit-code +ex-ok+
+				:name (getf params :name)
+				:pid-file (getf params :pid-file)
+				:user (get-username))))
+  (exit +ex-ok+))
+
 (declaim (ftype (function (config-plist)) 
 		stop-service status-service zap-service kill-service start-service simple-start))
 #+daemon.as-daemon
@@ -60,7 +72,9 @@
 						 :new-group (getf params :group))))
      :preparation-fn #'isolate-process
      :before-init-fn (getf params :before-init-fn)
-     :main-fn (getf params :main-function)
+     :main-fn #'(lambda (&aux result-values) 
+		  (setf result-values (multiple-value-list (funcall (getf params :main-function))))
+		  (general-success-exit result-values params))
      :os-params (getf params :os-params)))
   
   ) ;feature :as-daemon					
@@ -69,4 +83,6 @@
   (let ((*listen-privileged-ports* (getf params :listen-privileged-ports)))
     (restrict-rights :new-user (getf params :user) 
 		     :new-group (getf params :group)))
-  (start-as-no-daemon (getf params :main-function)))
+  (start-as-no-daemon #'(lambda (&aux result-values) 
+			  (setf result-values (multiple-value-list (funcall (getf params :main-function))))
+			  (general-success-exit result-values params))))

@@ -76,6 +76,7 @@
 	   #:make-extra-status
 	   #:extra-status-p
 	   #:copy-extra-status
+	   #:extra-status-result-values
 	   #:extra-status-pid
 	   #:extra-status-exit-code
 	   #:extra-status-name
@@ -156,7 +157,7 @@
 after fork). If daemon not response - calling timeout-forked-process-response-error")
 
 (defstruct extra-status
-  pid exit-code name pid-file user)
+  result-values pid exit-code name pid-file user)
 (defparameter *fn-exit* nil "Function for none local exit. Must be have parameters (&optional (status +ex-ok+) extra-status).
 Return value must be status value or list contained status value and value type of extra-status.")
 

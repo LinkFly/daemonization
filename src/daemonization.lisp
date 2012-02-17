@@ -220,7 +220,10 @@
 	     :pid (extra-status-pid extra-status) :pid-file (extra-status-pid-file extra-status))
 	    ((+ex-ok+ "stop" "zap" "kill" "restart") "success"
 	     :status nil :reason nil
-	     :pid (extra-status-pid extra-status) :pid-file (extra-status-pid-file extra-status)))
+	     :pid (extra-status-pid extra-status) :pid-file (extra-status-pid-file extra-status))
+	    ((+ex-ok+ "nodaemon") "success"
+	     :status nil :reason nil
+	     :pid nil :pid-file nil))
 	   (list :status status :extra-status extra-status))))
     (log-info "Ok. result-plist: ~S" result-plist)
     result-plist))
@@ -237,6 +240,9 @@
   (with-keys (result command status reason pid pid-file internal-result) 
       (copy-list ;'(:result "success" :command "start" :status "started" :reason nil :pid nil :pid-file nil)
        result-plist)
+    (when (and (string-equal result "success") 
+	       (string-equal command "nodaemon"))
+      (return-from result-plist-simple-printer ""))
     (macrolet ((to-strings (&rest getters)
 		 `(progn ,@(loop for getter in getters
 			      collect `(setf ,getter (princ-to-string ,getter)))))
@@ -404,15 +410,13 @@
 								(= +ex-ok+ (first res)))
 							    (let ((res (start-service conf-params)))
 							      (funcall *fn-exit* res)))))
-					   ("start" (start-service conf-params))		   
+					   ("start" (start-service conf-params))
 					   ("nodaemon" (simple-start conf-params))
 					   ("status" (status-service conf-params)))))))
 	    (when (eq :parent *process-type*)	      
 	      (let (result-plist status extra-status)
-		(if (consp result)
-		    (setq status (first result)
-			  extra-status (second result))
-		    (setq status result))
+		(setq status (first result)
+		      extra-status (second result))		
 		(setf result-plist (create-result-plist status extra-status daemon-command conf-params)) ;:print-extra-status print-extra-status))
 		(print-result-plist result-plist :print-type print-result-type :print-internal-result print-internal-result)
 		;(analized-and-print-result result daemon-command conf-params :print-extra-status print-extra-status)
