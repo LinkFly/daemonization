@@ -23,7 +23,7 @@
 
 #+(and daemon.listen-privileged-ports linux)
 (progn 
-  (defparameter *libcap-probable-libs* '("/lib/libcap.so.2" "/lib/libcap.so"))
+  (defparameter *libcap-probable-libs* '("/lib/libcap.so.2" "/lib/libcap.so" "/lib/x86_64-linux-gnu/libcap.so.2"))
   (defparameter *finded-libcap* nil)
 
   (defparameter *cap-from-text* nil)

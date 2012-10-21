@@ -23,7 +23,8 @@
 	   #:admin-user-p
 	   #:equal-users
 	   #:equal-groups
-	   #:safe-write))
+	   #:safe-write
+	   #:getenv))
 	   
 
 (in-package :daemon-utils-linux-port)

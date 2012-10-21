@@ -37,7 +37,8 @@
 	(ptsname fd)
 	(dup oldfd)
 	(dup2 oldfd newfd)
-	(setsid)	
+	(setsid)
+	(getenv name)
 
 	(fork)      
 	(exit &optional (status +ex-ok+))

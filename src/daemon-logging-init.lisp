@@ -38,7 +38,8 @@
      when (eq prop key) do (return t)))
 
 (defun logging-init ()    
-  (setf *logger* (plist-to-logger (with-open-file (stream (get-logging-conf-file))
+  (setf *logger* (plist-to-logger (with-open-file (stream (let ((*conf-log-file* (or (get-logging-conf-var) *conf-log-file*)))
+							    (get-logging-conf-file)))
 				    (read stream))))
   (with-slots (fn-log-info
 	       fn-log-info-load

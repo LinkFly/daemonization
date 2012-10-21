@@ -346,7 +346,7 @@
 			   (:print-internal-result t)))
 		daemonized))
 (defun-ext daemonized (conf-params daemon-command  
-		       &key (on-error :call-error) recreate-pid-file-on-start (print-result-type :simple) print-internal-result
+		       &key (on-error :call-error) (recreate-pid-file-on-start t) (print-result-type :simple) print-internal-result
 		       &aux (on-error-variants '(:return-error :as-ignore-errors :call-error :exit-from-lisp)))
   (let ((conf-params conf-params))
     (let ((pathname (get-system-path)))

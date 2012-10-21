@@ -22,6 +22,7 @@
 	   #:plist-to-logger
 
 	   ;;; Logging
+	   #:*logging-conf-envvar*
 	   #:*logger*
 	   #:copy-logger
 	   #:with-tmp-logger
@@ -123,6 +124,7 @@
 (defparameter *conf-files-dirname* "conf-files" "Default directory for config files")
 (defparameter *default-conf-file-name* "default.conf" "From this file do reading all are not setting parameters")
 (defparameter *conf-log-file* "default-logging.conf" "Parameters for logging")
+(defparameter *logging-conf-envvar* "LOGGING_CONF")
 
 (defparameter *listen-privileged-ports* t "If t enabled feature listening privileged (system) ports")
 (defparameter *main-function-symbol* nil "Setting in :daemonization package. Needed for correct reset
@@ -331,7 +333,7 @@ form."
   (make-pathname :defaults (get-conf-files-dir)
 		 :name *default-conf-file-name*))
 
-(defun get-logging-conf-file ()
+(defun get-logging-conf-file (&aux conf-log-file)
   (when (absolute-path-p *conf-log-file*) 
     (return-from get-logging-conf-file *conf-log-file*))
   (make-pathname :defaults (get-conf-files-dir)
