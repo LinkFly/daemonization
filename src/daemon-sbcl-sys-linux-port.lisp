@@ -28,7 +28,9 @@
 
   (:import-from :sb-sys #:enable-interrupt)
 
-  (:shadowing-import-from :sb-ext #:exit #:*posix-argv*)  
+  (:shadowing-import-from :sb-ext
+			  ;using with package prefix and redefined: #:exit 
+			  #:*posix-argv*)  
 
   (:export #:getpwnam #:getgrnam #:group-gid #:passwd-gid #:passwd-uid #:setresgid #:setresuid
 	   #:fork #:kill #:sigusr1 #:sigchld #:sigkill #:enable-interrupt :initgroups
