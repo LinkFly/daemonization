@@ -19,9 +19,10 @@
 
 (in-package :daemon-utils-port)
 
-(defun-ext get-logging-conf-var ()
+(defun get-logging-conf-var ()
   #-linux (error "GET-LOGGING-CONF-VAR not implemented on not Linux")
-  #+linux (getenv *logging-conf-envvar*))
+  #+linux (with-tmp-logger ((print-call-p nil)) 
+	    (getenv *logging-conf-envvar*)))
 
 (defun-ext change-user-and-group (&key user group)
   #-linux (error "CHANGE-USER-AND-GROUP not implemented on not Linux")

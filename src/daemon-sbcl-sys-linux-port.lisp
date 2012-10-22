@@ -56,7 +56,6 @@
 (define-symbol-macro log-info-constant #.(find-symbol (symbol-name 'log-info) *package*))
 (define-symbol-macro log-err-constant #.(find-symbol (symbol-name 'log-err) *package*))
 ;;; Defined exit ;;;
-(unintern 'exit)
 (defun exit (&optional (status +ex-ok+))
     (sb-ext:exit :code status))
 ;;;;;;;;;;;;;;;;;;;;

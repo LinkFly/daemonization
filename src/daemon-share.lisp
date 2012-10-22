@@ -1,5 +1,6 @@
 (defpackage daemon-share 
   (:use :cl :daemon-features :daemon-logging)
+  (:import-from :asdf #:initialize-output-translations)
   (:export #:define-constant 
 	   #:get-real-file
 	   #:*process-type* ;;Must be nil or :parent or :child. Needed for daemonize (there reading) and fork (there set)")
@@ -108,7 +109,9 @@
 	   #:error-description-source-more
 	   #:error-description-corrupted-form
 	   #:logger-count
-	   #:log-info-load))
+	   #:log-info-load
+
+	   #:reinitialized-output-translations))
 
 (in-package :daemon-share)
 
@@ -130,9 +133,14 @@
 (defparameter *main-function-symbol* nil "Setting in :daemonization package. Needed for correct reset
 :line property (in log-plist) in function call *fn-correct-log-plist*")
 
+(defparameter *reinitilized-output-translations-p* t)
+
+(defun reinitialized-output-translations ()
+  (when *reinitilized-output-translations-p* (initialize-output-translations)))
+ 
 (defstruct (logger (:include base-logger))
-  (files-dir "logs" :type string)
-  (admin-files-dir "logs" :type string)
+  (files-dir "logs" :type (or string keyword))
+  (admin-files-dir "logs" :type (or string keyword))
   (info-destination :system :type (or string pathname (eql :system)))
   (error-destination :system :type (or string pathname (eql :system)))
   (trace-destination :system :type (or string pathname (eql :system)))
@@ -313,7 +321,7 @@ form."
 				 ((or pathname string) dir-or-fn-get-dir)
 				 (function (funcall dir-or-fn-get-dir))
 				 (null (get-system-path)))))
-	(make-pathname :defaults pathname :name (pathname-name file) :type (pathname-type file)))))
+	(merge-pathnames file pathname))))
 
 (defun get-pid-files-dir ()
   (when (absolute-path-p *pid-files-dirname*) 
@@ -333,7 +341,7 @@ form."
   (make-pathname :defaults (get-conf-files-dir)
 		 :name *default-conf-file-name*))
 
-(defun get-logging-conf-file (&aux conf-log-file)
+(defun get-logging-conf-file ()
   (when (absolute-path-p *conf-log-file*) 
     (return-from get-logging-conf-file *conf-log-file*))
   (make-pathname :defaults (get-conf-files-dir)
