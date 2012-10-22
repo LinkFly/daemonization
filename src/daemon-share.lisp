@@ -194,7 +194,7 @@ Return value must be status value or list contained status value and value type 
 
 (define-constant +conf-parameters+ '(:before-init-fn :main-function :name :user :group :pid-file :pid-file-dir
 				     :before-parent-exit-fn :exit :os-params :parent-conf-file :parent-conf-file-dir
-				     :listen-privileged-ports))
+				     :listen-privileged-ports :conf-params-file))
 (define-constant +result-keys+ '(:result :command :status :reason :pid :pid-file :internal-result)) 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;		
