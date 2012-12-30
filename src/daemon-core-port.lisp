@@ -73,6 +73,7 @@
      :preparation-fn #'isolate-process
      :before-init-fn (getf params :before-init-fn)
      :main-fn #'(lambda (&aux result-values) 
+		  (reinitialized-output-translations)
 		  (setf result-values (multiple-value-list (funcall (getf params :main-function))))
 		  (general-success-exit result-values params))
      :os-params (getf params :os-params)))

@@ -1,5 +1,6 @@
 (defpackage daemon-share 
   (:use :cl :daemon-features :daemon-logging)
+  (:import-from :asdf #:initialize-output-translations)
   (:export #:define-constant 
 	   #:get-real-file
 	   #:*process-type* ;;Must be nil or :parent or :child. Needed for daemonize (there reading) and fork (there set)")
@@ -22,6 +23,7 @@
 	   #:plist-to-logger
 
 	   ;;; Logging
+	   #:*logging-conf-envvar*
 	   #:*logger*
 	   #:copy-logger
 	   #:with-tmp-logger
@@ -107,7 +109,9 @@
 	   #:error-description-source-more
 	   #:error-description-corrupted-form
 	   #:logger-count
-	   #:log-info-load))
+	   #:log-info-load
+
+	   #:reinitialized-output-translations))
 
 (in-package :daemon-share)
 
@@ -123,14 +127,20 @@
 (defparameter *conf-files-dirname* "conf-files" "Default directory for config files")
 (defparameter *default-conf-file-name* "default.conf" "From this file do reading all are not setting parameters")
 (defparameter *conf-log-file* "default-logging.conf" "Parameters for logging")
+(defparameter *logging-conf-envvar* "LOGGING_CONF")
 
 (defparameter *listen-privileged-ports* t "If t enabled feature listening privileged (system) ports")
 (defparameter *main-function-symbol* nil "Setting in :daemonization package. Needed for correct reset
 :line property (in log-plist) in function call *fn-correct-log-plist*")
 
+(defparameter *reinitilized-output-translations-p* t)
+
+(defun reinitialized-output-translations ()
+  (when *reinitilized-output-translations-p* (initialize-output-translations)))
+ 
 (defstruct (logger (:include base-logger))
-  (files-dir "logs" :type string)
-  (admin-files-dir "logs" :type string)
+  (files-dir "logs" :type (or string keyword))
+  (admin-files-dir "logs" :type (or string keyword))
   (info-destination :system :type (or string pathname (eql :system)))
   (error-destination :system :type (or string pathname (eql :system)))
   (trace-destination :system :type (or string pathname (eql :system)))
@@ -184,7 +194,7 @@ Return value must be status value or list contained status value and value type 
 
 (define-constant +conf-parameters+ '(:before-init-fn :main-function :name :user :group :pid-file :pid-file-dir
 				     :before-parent-exit-fn :exit :os-params :parent-conf-file :parent-conf-file-dir
-				     :listen-privileged-ports))
+				     :listen-privileged-ports :conf-params-file))
 (define-constant +result-keys+ '(:result :command :status :reason :pid :pid-file :internal-result)) 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;		
@@ -311,7 +321,7 @@ form."
 				 ((or pathname string) dir-or-fn-get-dir)
 				 (function (funcall dir-or-fn-get-dir))
 				 (null (get-system-path)))))
-	(make-pathname :defaults pathname :name (pathname-name file) :type (pathname-type file)))))
+	(merge-pathnames file pathname))))
 
 (defun get-pid-files-dir ()
   (when (absolute-path-p *pid-files-dirname*) 

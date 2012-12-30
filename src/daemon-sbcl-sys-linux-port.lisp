@@ -13,7 +13,7 @@
 		#:kill #:getpid #:getppid
 		#:getgid #:getgrgid #:group-name
 		#:chdir #:getcwd #:umask #:setsid #:dup #:dup2
-		#:wait)		
+		#:wait #:getenv)		
 
   (:shadowing-import-from :sb-posix
 			  #:sigusr1 #:sigchld #:sigkill
@@ -28,7 +28,9 @@
 
   (:import-from :sb-sys #:enable-interrupt)
 
-  (:shadowing-import-from :sb-ext #:quit #:*posix-argv*)
+  (:shadowing-import-from :sb-ext
+			  ;using with package prefix and redefined: #:exit 
+			  #:*posix-argv*)  
 
   (:export #:getpwnam #:getgrnam #:group-gid #:passwd-gid #:passwd-uid #:setresgid #:setresuid
 	   #:fork #:kill #:sigusr1 #:sigchld #:sigkill #:enable-interrupt :initgroups
@@ -53,6 +55,10 @@
 
 (define-symbol-macro log-info-constant #.(find-symbol (symbol-name 'log-info) *package*))
 (define-symbol-macro log-err-constant #.(find-symbol (symbol-name 'log-err) *package*))
+;;; Defined exit ;;;
+(defun exit (&optional (status +ex-ok+))
+    (sb-ext:exit :code status))
+;;;;;;;;;;;;;;;;;;;;
 
 #+daemon.listen-privileged-ports 
 (defconstant +PR_SET_KEEPCAPS+ 8)
@@ -82,9 +88,6 @@
     fork-res))
 
 ;;;;;;;;;;;
-(defun exit (&optional (status +ex-ok+))
-  (quit :unix-status status))
-
 (defun import-sys-functions-and-constants ()
   (let ((*package* (find-package :daemon-sbcl-sys-linux-port)))
 

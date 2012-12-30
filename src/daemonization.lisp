@@ -105,13 +105,15 @@
 (defun-ext equal-conf-params (conf-params1 conf-params2)  
   (equalp (sort-conf-params conf-params1) (sort-conf-params conf-params2)))
 
-(defun-ext normalize-conf-params (params-or-file)
+(defun-ext normalize-conf-params (params-or-file &aux conf-file)
   (declare (type (or pathname string list) params-or-file))
   (typecase params-or-file
     (list (return-from normalize-conf-params params-or-file))
     ((or pathname string) 
-     (with-open-file (stream (get-real-file params-or-file (get-conf-files-dir)))
-       (read stream)))))
+     (setf conf-file (get-real-file params-or-file (get-conf-files-dir)))
+     (append (list :conf-params-file conf-file)
+	     (with-open-file (stream conf-file)
+	       (read stream))))))
 
 (defun-ext correct-and-check-conf-params (conf-params fn-check)
   (loop 
@@ -149,7 +151,17 @@
     (when pid-file
       (setf (getf conf-params :pid-file) 
 	    (get-real-file pid-file 
-			   (if pid-file-dir pid-file-dir #'get-pid-files-dir))))))
+			   (if pid-file-dir 
+			       (if (eq pid-file-dir :this-dir)
+				   (progn 
+				     (unless (getf conf-params :conf-params-file)
+				       (error "If :pid-file-dir equal :this-dir then required parameter :conf-params-file"))
+				     (make-pathname :defaults
+						    (getf conf-params
+							  :conf-params-file)
+						    :name nil :type nil))
+				 (pathname pid-file-dir))
+			       #'get-pid-files-dir))))))
 
 (defun-ext check-not-exists-pid-file (pid-file cmd)
   (let ((err-str "pid-file ~S is already exists (daemon command: ~A)"))
@@ -346,7 +358,7 @@
 			   (:print-internal-result t)))
 		daemonized))
 (defun-ext daemonized (conf-params daemon-command  
-		       &key (on-error :call-error) recreate-pid-file-on-start (print-result-type :simple) print-internal-result
+		       &key (on-error :call-error) (recreate-pid-file-on-start t) (print-result-type :simple) print-internal-result
 		       &aux (on-error-variants '(:return-error :as-ignore-errors :call-error :exit-from-lisp)))
   (let ((conf-params conf-params))
     (let ((pathname (get-system-path)))

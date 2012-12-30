@@ -14,9 +14,15 @@
 	   #:safe-write
 	   #:get-username
 	   #:get-groupname
-	   #:safe-write))
+	   #:safe-write
+	   #:get-logging-conf-var))
 
 (in-package :daemon-utils-port)
+
+(defun get-logging-conf-var ()
+  #-linux (error "GET-LOGGING-CONF-VAR not implemented on not Linux")
+  #+linux (with-tmp-logger ((print-call-p nil)) 
+	    (getenv *logging-conf-envvar*)))
 
 (defun-ext change-user-and-group (&key user group)
   #-linux (error "CHANGE-USER-AND-GROUP not implemented on not Linux")
